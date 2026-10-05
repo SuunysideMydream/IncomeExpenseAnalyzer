@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moneywise — Income & Expense</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="modal.css" />
+  <link rel="stylesheet" href="motion.css" />
+  <link rel="stylesheet" href="ledger.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">↗</div><div><strong>moneywise</strong><span>personal finance</span></div></div>
+      <nav>
+        <button class="nav-item active" data-view="overview"><span>▦</span>Overview</button>
+        <button class="nav-item" data-view="transactions"><span>＋</span>Transactions</button>
+        <button class="nav-item" data-view="cards"><span>▣</span>Credit cards</button>
+        <button class="nav-item" data-view="installments"><span>◷</span>Installments</button>
+        <button class="nav-item" data-view="categories"><span>◌</span>Categories</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="source-note">Imported from<br><b>My Income Expense.xlsx</b></div><button class="settings">⚙ Settings</button></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div><p class="eyebrow">PERSONAL FINANCE</p><h1 id="page-title">Good evening, Alex.</h1></div><div class="top-actions"><button class="icon-button">⌕</button><button class="avatar">A</button></div></header>
+      <section id="app"></section>
+    </main>
+  </div>
+  <script src="app-v2.js"></script>
+</body>
+</html>

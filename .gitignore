@@ -1,0 +1,4 @@
+# Local data source and development artifacts
+*.xlsx
+__pycache__/
+.DS_Store
