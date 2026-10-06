@@ -1,0 +1,19 @@
+/* Unified rounded-rectangle controls */
+button{min-height:40px;border-radius:12px;font-weight:600;cursor:pointer;letter-spacing:.05px}
+.primary{min-height:42px;padding:0 18px;border-radius:12px;box-shadow:0 5px 12px rgba(23,33,31,.08)}
+.secondary{min-height:40px;padding:0 16px;border-radius:12px;background:#f5f8f6;color:#53615c}
+.nav-item{min-height:44px;padding:0 15px;border-radius:12px;justify-content:flex-start}
+.nav-item:after{top:10px;bottom:10px}
+.settings{min-height:40px;padding:0 13px;border-radius:11px;text-align:left}
+.icon-button{width:44px;height:40px;min-height:40px;border-radius:12px;background:#fff;font-size:19px}
+.avatar{width:44px;height:40px;min-height:40px;border-radius:12px}
+.period button{width:36px;height:36px;min-height:36px;border:1px solid var(--line);border-radius:11px;font-size:16px}
+.link-button{min-height:36px;padding:0 12px;border-radius:10px;background:#eef8f3}
+.edit-row{min-height:34px;padding:0 11px;border-radius:9px;background:#edf8f3}
+.close-modal{width:36px;height:36px;min-height:36px;border-radius:11px;font-size:18px}
+.view-switch{border-radius:12px;padding:5px}.view-switch button{min-height:34px;padding:0 13px;border-radius:9px}
+.ledger-pagination button{min-height:36px;padding:0 12px;border-radius:10px}
+.form-row .primary{min-height:40px}.modal-actions button{min-width:96px}
+.primary:hover,.secondary:hover,.link-button:hover,.edit-row:hover{transform:translateY(-2px)}
+.primary:focus-visible,.secondary:focus-visible,.nav-item:focus-visible,.edit-row:focus-visible,.link-button:focus-visible{outline:3px solid rgba(44,155,114,.24);outline-offset:2px}
+@media(max-width:700px){.primary{padding:0 14px}.nav-item{min-height:42px}.modal-actions button{min-width:88px}}
