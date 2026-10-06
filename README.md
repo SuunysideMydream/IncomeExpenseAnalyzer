@@ -22,3 +22,7 @@ Then visit `http://localhost:8765`.
 ## Data
 
 `data.json` is the published, browser-readable snapshot of the workbook data. Changes made through the UI are saved only in the browser’s local storage for now; they do not change the source Excel workbook.
+
+## Animated background attribution
+
+The ambient bubble layer uses the downloaded `JS-Animated-Bubbles-Background` asset. Its original JavaScript and GPL-2.0 license are retained in `Assets/JS-Animated-Bubbles-Background-master/`; `bubble-background.css` contains the Moneywise-specific glass-layer integration and readability tuning.

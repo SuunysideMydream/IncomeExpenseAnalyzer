@@ -1,0 +1,124 @@
+/*
+ * Lightweight liquid-glass surface layer inspired by
+ * https://github.com/iyinchao/liquid-glass-studio
+ *
+ * The original project is a WebGL/WebGPU renderer. This app stays dependency-free,
+ * so this layer uses the browser's compositing primitives instead: translucency,
+ * backdrop blur, soft specular highlights, and spring-like hover lift.
+ */
+:root{
+  --glass-fill:rgba(255,255,255,.66);
+  --glass-fill-strong:rgba(255,255,255,.82);
+  --glass-border:rgba(255,255,255,.82);
+  --glass-highlight:rgba(255,255,255,.58);
+  --glass-shadow:0 18px 44px rgba(23,33,31,.09),0 2px 6px rgba(23,33,31,.04);
+  --glass-hover-shadow:0 22px 52px rgba(44,155,114,.16),0 4px 12px rgba(23,33,31,.08);
+}
+
+body.dark{
+  --glass-fill:rgba(27,42,39,.68);
+  --glass-fill-strong:rgba(30,47,43,.86);
+  --glass-border:rgba(201,241,223,.18);
+  --glass-highlight:rgba(210,255,237,.12);
+  --glass-shadow:0 20px 48px rgba(0,0,0,.24),0 2px 8px rgba(0,0,0,.16);
+  --glass-hover-shadow:0 22px 54px rgba(38,184,133,.17),0 4px 14px rgba(0,0,0,.2);
+}
+
+body{
+  background-image:
+    radial-gradient(circle at 86% -10%,rgba(117,223,180,.13),transparent 34%),
+    radial-gradient(circle at 12% 108%,rgba(113,166,255,.08),transparent 32%);
+}
+
+.sidebar,
+.card,
+.modal,
+.theme-control,
+.icon-button,
+.secondary,
+.overview-month,
+.ledger-controls select,
+.ledger-pagination button,
+.view-switch,
+.view-switch button,
+.day-ledger,
+.calendar-day,
+.spend-chip,
+.category-tile,
+.installment-total,
+.preview-box,
+.tag{
+  background-color:var(--glass-fill);
+  background-image:linear-gradient(135deg,var(--glass-highlight),transparent 42%);
+  border-color:var(--glass-border);
+  box-shadow:var(--glass-shadow);
+  -webkit-backdrop-filter:blur(18px) saturate(138%);
+  backdrop-filter:blur(18px) saturate(138%);
+}
+
+.sidebar{
+  box-shadow:10px 0 34px rgba(23,33,31,.045);
+}
+
+.card:hover,
+.category-tile:hover,
+.day-ledger:hover,
+.calendar-day:hover,
+.tag:hover{
+  border-color:rgba(64,205,151,.42);
+  box-shadow:var(--glass-hover-shadow);
+}
+
+.modal{
+  background-color:var(--glass-fill-strong);
+  box-shadow:0 30px 90px rgba(0,0,0,.24),0 0 0 1px var(--glass-border);
+}
+
+.modal-backdrop{
+  -webkit-backdrop-filter:blur(14px) saturate(120%);
+  backdrop-filter:blur(14px) saturate(120%);
+}
+
+.primary,
+.edit-row,
+.link-button,
+.close-modal,
+.avatar{
+  box-shadow:0 8px 22px rgba(44,155,114,.11),inset 0 1px 0 rgba(255,255,255,.28);
+}
+
+.primary:hover,
+.edit-row:hover,
+.link-button:hover,
+.close-modal:hover,
+.avatar:hover{
+  box-shadow:var(--glass-hover-shadow),inset 0 1px 0 rgba(255,255,255,.34);
+}
+
+.theme-control input::-webkit-slider-runnable-track{
+  background:linear-gradient(90deg,rgba(64,205,151,.3),rgba(64,205,151,.78));
+}
+
+@media(prefers-reduced-transparency:reduce){
+  .sidebar,
+  .card,
+  .modal,
+  .theme-control,
+  .icon-button,
+  .secondary,
+  .overview-month,
+  .ledger-controls select,
+  .ledger-pagination button,
+  .view-switch,
+  .view-switch button,
+  .day-ledger,
+  .calendar-day,
+  .spend-chip,
+  .category-tile,
+  .installment-total,
+  .preview-box,
+  .tag{
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+}

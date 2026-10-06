@@ -2,3 +2,23 @@
 body.dark{--bg:#111716;--surface:#1a2422;--surface-soft:#20312c;--ink:#eef7f3;--muted:#a9b8b2;--line:#30403b;--grid:#2b3a36}
 body{background:var(--bg);color:var(--ink)}.sidebar,.card,.icon-button,.period button,.secondary,.field input,.field select,.field textarea,.calendar-day,.day-ledger,.link-button,.edit-row,.view-switch,.view-switch button{background:var(--surface);color:var(--ink);border-color:var(--line)}.sidebar{background:var(--surface)}.nav-item.active,.nav-item:hover{background:var(--surface-soft)}.insight,.installment-total,.preview-box{background:var(--surface-soft);color:var(--muted)}.gridline{stroke:var(--grid)}.donut:after{background:var(--surface)}.source-note b{color:var(--muted)}.theme-control{height:40px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--muted);font-size:14px}.theme-control input{width:42px;accent-color:var(--mint-deep);cursor:pointer}.theme-control:focus-within{box-shadow:0 0 0 3px rgba(64,205,151,.15);border-color:#86d3b4}
 body.dark .primary{background:#c9f1df;color:#12201b}.dark .pill.completed{background:#2a3431;color:#bdcbc5}.dark .pill.plan{background:#4a4027;color:#f0cb79}.dark th{color:#a6b3ae}.dark td{border-bottom-color:#2b3a36}.dark .card-number,.dark .card-footer{color:#fff}
+
+/* Dark-surface coverage for secondary controls and native popups. */
+body.dark{color-scheme:dark}
+body:not(.dark){color-scheme:light}
+body.dark .modal{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+body.dark .modal-backdrop{background:rgba(3,9,8,.68)}
+body.dark .close-modal{background:var(--surface-soft);color:var(--muted);border:1px solid var(--line)}
+body.dark .modal-actions .secondary{background:var(--surface-soft);color:var(--ink);border-color:var(--line)}
+body.dark .ledger-controls select,
+body.dark .ledger-pagination button,
+body.dark .spend-chip,
+body.dark .category-tile,
+body.dark .tag,
+body.dark .day,
+body.dark .calendar-day.muted{background:var(--surface);color:var(--ink);border-color:var(--line)}
+body.dark .calendar-day.muted{background:var(--surface-soft);color:var(--muted)}
+body.dark select{background:var(--surface);color:var(--ink);border-color:var(--line)}
+body.dark select option{background:var(--surface);color:var(--ink)}
+body.dark .view-switch button.active{background:var(--surface-soft);color:var(--ink);box-shadow:0 3px 10px rgba(0,0,0,.22)}
+body.dark .category-swatch{box-shadow:inset 0 0 0 5px rgba(255,255,255,.18)}

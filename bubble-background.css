@@ -1,0 +1,53 @@
+/*
+ * Moneywise integration layer for the GPL-2.0 movingbubbles asset.
+ * The original source and license remain in:
+ * Assets/JS-Animated-Bubbles-Background-master/
+ *
+ * Keep this layer separate from the vendor stylesheet: the vendor demo
+ * changes the entire document stacking context, while Moneywise needs the
+ * bubbles to sit quietly behind its glass surfaces.
+ */
+#bubbleContainer{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+  opacity:.30;
+  isolation:isolate;
+  transition:opacity .5s ease;
+}
+
+#bubbleContainer div{
+  position:fixed;
+  z-index:0;
+  border-radius:50%;
+  pointer-events:none;
+  will-change:left,top,opacity;
+  filter:saturate(.88) blur(.15px);
+}
+
+.app-shell{
+  position:relative;
+  z-index:1;
+  isolation:isolate;
+}
+
+body.dark #bubbleContainer{
+  opacity:.20;
+  filter:saturate(.82) brightness(.82);
+}
+
+@media(max-width:700px){
+  #bubbleContainer{opacity:.20}
+  body.dark #bubbleContainer{opacity:.14}
+}
+
+@media(prefers-reduced-motion:reduce){
+  #bubbleContainer{display:none}
+}
+
+@media(prefers-reduced-transparency:reduce){
+  #bubbleContainer{opacity:.16}
+  body.dark #bubbleContainer{opacity:.1}
+}

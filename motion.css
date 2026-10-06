@@ -10,3 +10,23 @@ button,.card,.nav-item,.tag,.pill,.field input,.field select,.field textarea{tra
 .settings:hover{color:var(--mint-deep);transform:translateX(3px)}
 @keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}@keyframes drawLine{to{stroke-dashoffset:0}}@keyframes dotIn{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}@keyframes donutIn{from{opacity:0;transform:scale(.88) rotate(-15deg)}to{opacity:1;transform:none}}@keyframes backdropIn{from{opacity:0}to{opacity:1}}@keyframes modalMorph{0%{opacity:0;transform:translateY(18px) scale(.94);border-radius:30px}55%{opacity:1;transform:translateY(-3px) scale(1.015);border-radius:22px}100%{opacity:1;transform:none;border-radius:20px}}@keyframes sectionIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Apple-style motion layer: direct press feedback, route materialization, and
+   interruptible modal states. Motion stays on compositor-friendly properties. */
+body,#app,.sidebar,.topbar,.card,.theme-control,.icon-button,.avatar,.primary,.secondary,.edit-row,.overview-month,.ledger-controls select,.ledger-pagination button,.modal{transition:background-color .42s ease,color .32s ease,border-color .42s ease,box-shadow .42s ease}
+button{touch-action:manipulation}
+.primary:active,.secondary:active,.edit-row:active,.link-button:active,.icon-button:active,.period button:active,.close-modal:active,.avatar:active{transform:scale(.97);transition-duration:.1s}
+.settings:active,.nav-item:active{transform:scale(.985)}
+#app.page-enter{animation:routeEnter .46s cubic-bezier(.22,1,.36,1) both}
+.credit-card{--tilt-x:0deg;--tilt-y:0deg;transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateZ(0);transition:transform .55s cubic-bezier(.22,1,.36,1),box-shadow .35s ease;will-change:transform}
+.credit-card.is-tilting{transition:none;box-shadow:0 24px 45px rgba(44,155,114,.2)}
+.modal-backdrop{animation:none;opacity:0;transition:opacity .28s cubic-bezier(.22,1,.36,1)}
+.modal-backdrop.is-open{opacity:1}
+.modal-backdrop.is-closing{opacity:0;pointer-events:none}
+.modal{animation:none;transform-origin:var(--origin-x,50%) var(--origin-y,50%);opacity:0;filter:blur(7px);transform:translateY(16px) scale(.94);transition:opacity .34s cubic-bezier(.22,1,.36,1),transform .42s cubic-bezier(.22,1,.36,1),filter .42s cubic-bezier(.22,1,.36,1)}
+.modal-backdrop.is-open .modal{opacity:1;filter:none;transform:translateY(0) scale(1)}
+.modal-backdrop.is-closing .modal{opacity:0;filter:blur(5px);transform:translateY(10px) scale(.97)}
+@supports(view-transition-name:app){#app{view-transition-name:app}::view-transition-old(app){animation:routeOld .18s ease both}::view-transition-new(app){animation:routeNew .42s cubic-bezier(.22,1,.36,1) both}}
+@keyframes routeEnter{from{opacity:0;transform:translateY(9px) scale(.992)}to{opacity:1;transform:none}}
+@keyframes routeOld{to{opacity:0;transform:translateY(-5px) scale(.995);filter:blur(2px)}}
+@keyframes routeNew{from{opacity:0;transform:translateY(9px) scale(.992);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
