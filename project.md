@@ -18,6 +18,8 @@ The long-term goal is to make it easy to record transactions, understand spendin
 
 - Select a month to review.
 - View income, spending, net balance, and tracked card count.
+- Compare monthly workbook card-payment totals by card, review the highest payment, and explore total or selected-card trends.
+- Browse card-payment months independently from the main overview month; separate workbook payment totals from card-tagged transaction spending.
 - Review the largest expense categories.
 - Review average daily spending, highest spending day, active installment commitments, and the next card due date.
 
@@ -59,7 +61,7 @@ The long-term goal is to make it easy to record transactions, understand spendin
 
 ### 6. Visual experience
 
-- Light and dark mode using a slider control.
+- Light and dark mode using the animated sun/moon switch.
 - Liquid-glass-inspired surfaces using translucency, blur, borders, highlights, and depth.
 - Rounded rectangular buttons with stronger visual affordance.
 - Animated sun/moon theme switch, with the selected mode persisted between visits.
@@ -227,13 +229,20 @@ Recommended next step:
 
 ### Monthly infographic trend graph is incomplete
 
-The overview currently shows monthly KPIs and category bars, but a dedicated month-over-month income, spending, and net-balance chart should be added.
+The overview now includes interactive card-payment comparisons, but a dedicated month-over-month income, spending, and net-balance chart should still be added.
 
 Recommended next step:
 
 - Use the monthly values already available in `data.months`.
 - Add a responsive SVG chart with accessible labels.
 - Keep the chart readable in both themes and respect reduced motion.
+
+### Card-payment overview comparisons
+
+- Compare cards for one payment month using a ranked bar chart.
+- Compare all card payments over 6 months, 12 months, or all available months.
+- Compare manually selected cards over time with a configurable display limit, defaulting to four.
+- Keep workbook payment totals distinct from purchases tagged to a card in the transaction ledger.
 
 ### Data persistence is browser-local only
 

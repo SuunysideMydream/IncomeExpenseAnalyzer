@@ -9,3 +9,60 @@
 .theme__toggle:focus-visible{box-shadow:0 0 0 .16em var(--primary);outline:2px solid transparent;outline-offset:3px}
 body.dark .theme__toggle{box-shadow:0 0 0 .125em rgba(161,255,220,.22)}
 @media(prefers-reduced-motion:reduce){.theme__toggle,.theme__toggle:before,.theme__icon,.theme__icon-part{transition:none!important}}
+.card-insights{margin:0 0 22px;padding:22px;overflow:visible}
+.card-insights-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.card-insights-head .eyebrow{display:block;margin:0 0 5px;font-size:9px}
+.card-insights-head h2{margin:0;font:600 19px 'Space Grotesk';letter-spacing:-.4px}
+.card-insights-head p{margin:5px 0 0;color:var(--muted);font-size:11px}
+.insight-month-picker,.trend-range-picker,.limit-picker{display:grid;gap:5px;color:var(--muted);font-size:10px;font-weight:600}
+.insight-month-picker select,.trend-range-picker select,.limit-picker select{min-height:36px;padding:0 30px 0 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:500 12px 'DM Sans'}
+.card-insight-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.card-insight-stats>div{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;padding:13px 15px;border-radius:13px;background:var(--surface-soft)}
+.card-insight-stats span{color:var(--muted);font-size:11px}
+.card-insight-stats strong{grid-column:1;font:600 22px 'Space Grotesk';letter-spacing:-.4px}
+.card-insight-stats small{grid-column:2;grid-row:1/3;max-width:180px;color:var(--muted);font-size:10px;text-align:right}
+.card-chart-toolbar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
+.card-chart-toolbar .view-switch{width:max-content;max-width:100%;flex-wrap:wrap}
+.card-chart-toolbar .view-switch button{font-size:11px}
+.trend-range-picker{display:flex;align-items:center;gap:8px}
+.trend-range-picker select{min-width:116px}
+.card-insight-chart{min-height:145px;padding:4px 0 8px}
+.card-payment-bars{display:grid;gap:5px}
+.card-payment-row{display:grid;grid-template-columns:minmax(135px,190px) minmax(80px,1fr) 100px 58px;gap:12px;align-items:center;width:100%;min-height:39px;padding:4px 9px;border:0;border-radius:9px;background:transparent;color:var(--ink);text-align:left;font:500 11px 'DM Sans';transition:background .18s ease,transform .18s ease}
+.card-payment-row:hover,.card-payment-row:focus-visible{background:var(--surface-soft);transform:translateX(2px);outline:none}
+.payment-card-name{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.payment-card-name>i,.payment-legend i,.logged-card-chips i,.card-picker-list label>i{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:var(--card-color)}
+.payment-card-name em{margin-left:auto;padding:3px 6px;border-radius:20px;background:rgba(44,155,114,.12);color:var(--mint-deep);font-size:9px;font-style:normal}
+.payment-track{height:9px;overflow:hidden;border-radius:9px;background:var(--line)}
+.payment-track i{display:block;height:100%;border-radius:inherit;background:var(--card-color);transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.card-payment-row>b{text-align:right;font-size:11px}
+.payment-drill{color:var(--mint-deep);font-size:10px;text-align:right}
+.payment-chart-wrap{width:100%;height:245px}
+.payment-chart-wrap svg{width:100%;height:100%;overflow:visible}
+.payment-gridline{stroke:var(--line);stroke-width:1;stroke-dasharray:3 5}
+.payment-axis-label{fill:var(--muted);font:10px 'DM Sans'}
+.payment-line{fill:none;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round}
+.payment-legend{display:flex;flex-wrap:wrap;gap:8px 15px;margin:5px 6px 0;color:var(--muted);font-size:10px}
+.payment-legend span{display:flex;align-items:center;gap:6px}
+.card-comparison-picker{position:relative}
+.card-comparison-picker>summary{min-height:36px;padding:0 12px;display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:11px;font-weight:600;cursor:pointer;list-style:none;white-space:nowrap}
+.card-comparison-picker>summary::-webkit-details-marker{display:none}
+.card-picker-panel{position:absolute;z-index:20;top:calc(100% + 8px);right:0;width:min(360px,82vw);padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 16px 40px rgba(12,28,22,.18)}
+.limit-picker{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.limit-picker select{min-width:100px}
+.card-picker-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;max-height:220px;overflow:auto;padding:2px}
+.card-picker-list label{display:flex;align-items:center;gap:7px;min-width:0;padding:6px 3px;color:var(--ink);font-size:10px;cursor:pointer}
+.card-picker-list label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-picker-list label input{accent-color:var(--mint-deep)}
+.card-picker-list label input:disabled{cursor:not-allowed}
+.card-picker-panel>small{display:block;margin-top:9px;color:var(--muted);font-size:10px}
+.logged-card-spending{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line)}
+.logged-card-spending>div:first-child{display:grid;gap:4px}
+.logged-card-spending strong{font-size:11px}
+.logged-card-spending span{color:var(--muted);font-size:10px}
+.logged-card-chips{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px}
+.logged-card-chips>span{display:flex;align-items:center;gap:5px;padding:6px 8px;border-radius:9px;background:var(--surface-soft);font-size:9px;color:var(--ink)}
+.logged-card-chips b{font-weight:700}
+@media(max-width:720px){.card-insights{padding:17px}.card-insights-head{flex-direction:column}.insight-month-picker{display:flex;align-items:center}.card-chart-toolbar{align-items:flex-start;flex-direction:column}.card-insight-stats>div{grid-template-columns:1fr}.card-insight-stats strong,.card-insight-stats small{grid-column:1;grid-row:auto;text-align:left}.card-payment-row{grid-template-columns:minmax(105px,145px) minmax(55px,1fr) 80px;gap:8px}.payment-drill{display:none}.logged-card-spending{flex-direction:column}.logged-card-chips{justify-content:flex-start}}
+@media(max-width:440px){.card-insight-stats{grid-template-columns:1fr}.card-payment-row{grid-template-columns:minmax(95px,125px) minmax(45px,1fr) 75px;font-size:10px}.card-insight-stats strong{font-size:19px}}
+@media(prefers-reduced-motion:reduce){.payment-track i,.card-payment-row{transition:none}}
