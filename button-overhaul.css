@@ -6,6 +6,10 @@ button{min-height:40px;border-radius:12px;font-weight:600;cursor:pointer;letter-
 .nav-item:after{top:10px;bottom:10px}
 .settings{min-height:40px;padding:0 13px;border-radius:11px;text-align:left}
 .icon-button{width:44px;height:40px;min-height:40px;border-radius:12px;background:#fff;font-size:19px}
+.backup-button{min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:12px;font:600 12px 'DM Sans';white-space:nowrap}
+.backup-button.secondary{background:var(--surface);color:var(--ink)}
+.backup-button.primary{background:var(--ink);color:var(--mint);border:0}
+body.dark .backup-button.primary{background:#c9f1df;color:#12201b}
 .avatar{width:44px;height:40px;min-height:40px;border-radius:12px}
 .period button{width:36px;height:36px;min-height:36px;border:1px solid var(--line);border-radius:11px;font-size:16px}
 .link-button{min-height:36px;padding:0 12px;border-radius:10px;background:#eef8f3}

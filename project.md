@@ -62,6 +62,7 @@ The long-term goal is to make it easy to record transactions, understand spendin
 - Light and dark mode using a slider control.
 - Liquid-glass-inspired surfaces using translucency, blur, borders, highlights, and depth.
 - Rounded rectangular buttons with stronger visual affordance.
+- Animated sun/moon theme switch, with the selected mode persisted between visits.
 - Apple-inspired motion for route changes, modals, hover states, card tilt, and button feedback.
 - Credit-card internal sheen, chip glint, and softly shifting decorative halo.
 - Animated bubble background behind the glass surfaces.
@@ -99,6 +100,8 @@ User-created changes are stored in browser `localStorage` using these keys:
 - `mw-theme` — selected light or dark mode.
 
 The application does not currently write changes back to the source Excel workbook.
+
+Use the header's **Save data** control to export these user changes as a portable `savedata.js` backup. **Load data** imports that file after confirmation and replaces the browser's current saved changes. The backup is a strict data-only JavaScript wrapper; the app parses it as text and never executes the imported file. When supported, the browser save picker lets the user choose the destination; otherwise it downloads to the browser's configured download folder.
 
 ## Completed issues and solutions
 
