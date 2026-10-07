@@ -1,0 +1,156 @@
+/* Cursor light and motion treatments for the added GSAP and Vengeance UI assets. */
+.main{
+  position:relative;
+  isolation:isolate;
+}
+
+.main>.topbar,
+.main>#app{
+  position:relative;
+  z-index:1;
+}
+
+.ambient-orb{
+  position:absolute;
+  z-index:0;
+  top:92px;
+  right:22%;
+  width:76px;
+  aspect-ratio:1;
+  border-radius:50%;
+  pointer-events:none;
+  opacity:.4;
+  background:
+    radial-gradient(circle at 34% 30%,rgba(255,255,255,.95) 0 5%,rgba(255,255,255,.46) 14%,transparent 38%),
+    radial-gradient(circle at 64% 68%,rgba(102,217,177,.44),rgba(108,172,240,.16) 58%,transparent 74%);
+  box-shadow:inset -8px -10px 22px rgba(64,153,139,.12),0 0 42px rgba(106,210,178,.15);
+  filter:blur(.15px);
+  will-change:transform;
+}
+
+body.dark .ambient-orb{
+  opacity:.28;
+  box-shadow:inset -8px -10px 22px rgba(64,153,139,.12),0 0 48px rgba(106,210,178,.2);
+}
+
+.spotlight-surface{
+  position:relative;
+  --spot-x:50%;
+  --spot-y:50%;
+}
+
+.pointer-glow{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  border-radius:inherit;
+  pointer-events:none;
+  opacity:0;
+  background:radial-gradient(260px circle at var(--spot-x,50%) var(--spot-y,50%),rgba(255,255,255,.25),rgba(255,255,255,.08) 32%,transparent 70%);
+  mix-blend-mode:soft-light;
+  transition:opacity .24s ease;
+}
+
+.spotlight-surface.is-lit>.pointer-glow{
+  opacity:.9;
+}
+
+body.dark .pointer-glow{
+  background:radial-gradient(260px circle at var(--spot-x,50%) var(--spot-y,50%),rgba(161,255,220,.3),rgba(119,223,187,.08) 34%,transparent 72%);
+  mix-blend-mode:screen;
+}
+
+.credit-card::before{
+  transition:transform .72s cubic-bezier(.22,1,.36,1);
+}
+
+.credit-card:hover::before,
+.credit-card.is-tilting::before{
+  transform:translate(-8px,7px) scale(1.04);
+}
+
+.card-chip{
+  position:relative;
+  overflow:hidden;
+}
+
+.card-chip::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background:linear-gradient(110deg,transparent 28%,rgba(255,255,255,.76) 48%,transparent 68%);
+  transform:translateX(-120%);
+}
+
+.credit-card:hover .card-chip::after,
+.credit-card:focus-within .card-chip::after{
+  animation:chipGlint .78s cubic-bezier(.22,1,.36,1) both;
+}
+
+.card-sheen{
+  position:absolute;
+  inset:-70% -55%;
+  z-index:0!important;
+  pointer-events:none;
+  opacity:0;
+  background:linear-gradient(108deg,transparent 41%,rgba(255,255,255,.035) 45%,rgba(255,255,255,.24) 50%,rgba(255,255,255,.04) 55%,transparent 61%);
+  transform:translateX(-34%) rotate(12deg);
+}
+
+.credit-card:hover .card-sheen,
+.credit-card:focus-within .card-sheen{
+  animation:cardSheen 1.1s cubic-bezier(.22,1,.36,1) both;
+}
+
+@keyframes chipGlint{to{transform:translateX(120%)}}
+@keyframes cardSheen{0%{opacity:0;transform:translateX(-34%) rotate(12deg)}15%{opacity:.9}100%{opacity:0;transform:translateX(34%) rotate(12deg)}}
+
+@media(hover:none), (pointer:coarse){
+  .pointer-glow{display:none}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .credit-card::before{transition:none}
+  .credit-card:hover::before,.credit-card.is-tilting::before{transform:none}
+  .card-chip::after,.card-sheen{animation:none!important}
+  .card-sheen{opacity:0!important}
+  .pointer-glow{transition:none}
+}
+
+.route-exit{
+  position:fixed!important;
+  z-index:100!important;
+  margin:0!important;
+  pointer-events:none!important;
+  overflow:hidden;
+  transform-origin:center;
+  will-change:opacity,transform,filter;
+}
+
+.brand [data-ascii-glitch]{
+  display:block;
+  cursor:default;
+  min-width:max-content;
+  transition:color .25s ease,text-shadow .25s ease;
+}
+
+.brand:hover [data-ascii-glitch]{
+  color:var(--mint-deep);
+  text-shadow:0 0 18px rgba(64,205,151,.28);
+}
+
+@media(max-width:700px){
+  .ambient-orb{display:none}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .ambient-orb{display:none}
+  .pointer-glow{transition:none}
+}
+
+@media(prefers-reduced-transparency:reduce){
+  .ambient-orb{opacity:.18;filter:none;box-shadow:none}
+  body.dark .ambient-orb{opacity:.12}
+}

@@ -13,11 +13,13 @@
   <link rel="stylesheet" href="interaction.css" />
   <link rel="stylesheet" href="liquid-glass.css?v=20261006-glass1" />
   <link rel="stylesheet" href="bubble-background.css?v=20261006-bubbles1" />
+  <link rel="stylesheet" href="Assets/vengeance_ui/ascii_glitch_ripple/ascii-glitch-ripple.css" />
+  <link rel="stylesheet" href="motion-enhancements.css?v=20261007-card-motion2" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">↗</div><div><strong>moneywise</strong><span>personal finance</span></div></div>
+      <div class="brand"><div class="brand-mark">↗</div><div><strong data-ascii-glitch data-dur="760" data-spread="1.35">moneywise</strong><span>personal finance</span></div></div>
       <nav>
         <button class="nav-item active" data-view="overview"><span>▦</span>Overview</button>
         <button class="nav-item" data-view="transactions"><span>＋</span>Transactions</button>
@@ -28,12 +30,15 @@
       <div class="sidebar-bottom"><div class="source-note">Imported from<br><b>My Income Expense.xlsx</b></div><button class="settings">⚙ Settings</button></div>
     </aside>
     <main class="main">
+      <div class="ambient-orb" aria-hidden="true"></div>
       <header class="topbar"><div><p class="eyebrow">PERSONAL FINANCE</p><h1 id="page-title">Good evening, Alex.</h1></div><div class="top-actions"><label class="theme-control" title="Toggle light and dark mode"><span>☼</span><input id="theme-slider" type="range" min="0" max="1" step="1" value="0" aria-label="Theme mode"><span>☾</span></label><button class="icon-button">⌕</button><button class="avatar">A</button></div></header>
       <section id="app"></section>
     </main>
   </div>
   <!-- GPL-2.0 asset retained in Assets/JS-Animated-Bubbles-Background-master/ -->
   <script src="Assets/JS-Animated-Bubbles-Background-master/movingbubbles.js?v=20261006-bubbles1"></script>
-  <script src="app-v2.js?v=20261006-apple3"></script>
+  <script src="Assets/gsap/gsap.min.js?v=20261007-motion1"></script>
+  <script src="Assets/vengeance_ui/ascii_glitch_ripple/ascii-glitch-ripple.js?v=20261007-motion1"></script>
+  <script src="app-v2.js?v=20261007-motion1"></script>
 </body>
 </html>

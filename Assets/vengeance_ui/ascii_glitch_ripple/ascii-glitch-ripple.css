@@ -1,0 +1,13 @@
+.ascii-glitch-ripple {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  display: inline-block;
+  transition: color 200ms ease;
+  font-variant-ligatures: none;
+}
+
+.ascii-glitch-ripple.is-ascii-glitching {
+  white-space: pre;
+  will-change: contents;
+}

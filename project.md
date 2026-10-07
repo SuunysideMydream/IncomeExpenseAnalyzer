@@ -1,6 +1,6 @@
 # Moneywise — Project Notes
 
-Last updated: 2026-10-06
+Last updated: 2026-10-07
 
 ## Project goal
 
@@ -63,6 +63,7 @@ The long-term goal is to make it easy to record transactions, understand spendin
 - Liquid-glass-inspired surfaces using translucency, blur, borders, highlights, and depth.
 - Rounded rectangular buttons with stronger visual affordance.
 - Apple-inspired motion for route changes, modals, hover states, card tilt, and button feedback.
+- Credit-card internal sheen, chip glint, and softly shifting decorative halo.
 - Animated bubble background behind the glass surfaces.
 - Reduced-motion and reduced-transparency fallbacks.
 
@@ -79,10 +80,13 @@ This is currently a dependency-free static web application:
 - `motion.css` — Apple-style transitions, route animation, button feedback, modal morphing, and card tilt.
 - `liquid-glass.css` — translucent glass materials, backdrop blur, highlights, and depth.
 - `bubble-background.css` — project-specific integration of the animated bubble layer.
+- `motion-enhancements.css` — cursor spotlight, ambient orb, and transition-layer styling.
 - `ledger.css` — transaction ledger, calendar, and detail layout styles.
 - `button-overhaul.css` — rounded button treatment.
 - `interaction.css` — interaction and responsive refinements.
 - `Assets/JS-Animated-Bubbles-Background-master/` — retained third-party bubble asset and its GPL-2.0 license.
+- `Assets/gsap/` — user-provided GSAP distribution; the app loads only `gsap.min.js`.
+- `Assets/vengeance_ui/ascii_glitch_ripple/` — user-provided ASCII Glitch Ripple effect, used on the Moneywise wordmark.
 
 User-created changes are stored in browser `localStorage` using these keys:
 
@@ -186,6 +190,17 @@ Solution:
 - Disabled the background when the user prefers reduced motion.
 - Set `pointer-events: none` so the layer cannot block application controls.
 
+### Issue: The glass surfaces and page changes could feel more responsive to the pointer
+
+Solution:
+
+- Added a low-intensity cursor spotlight to cards, category tiles, ledger rows, calendar days, and credit cards.
+- Added GSAP transitions that briefly move and fade outgoing page content while the next view materializes.
+- Added a small, softly lit ambient orb near the header; it moves with a restrained, looping GSAP animation.
+- Added a one-pass reflective sweep across the card face, a brief chip glint, and gentle movement in the card’s existing highlight when hovered.
+- Added the ASCII Glitch Ripple effect to the brand wordmark only, keeping finance labels and amounts stable.
+- Disabled the ASCII effect and ambient motion when reduced motion is requested; the spotlight is disabled on touch-oriented devices.
+
 ### Issue: The project needs to be publishable as a repository
 
 Solution:
@@ -256,6 +271,8 @@ The animated bubble source is GPL-2.0. The original source and license are retai
 
 Before distributing a future proprietary or differently licensed version, replace the asset with an independently implemented background or confirm the licensing requirements for the whole distribution.
 
+The supplied ASCII Glitch Ripple folder does not contain a separate license or attribution file. Confirm its source and distribution terms before publishing the repository. The app currently uses it only for the brand wordmark.
+
 ## Validation completed
 
 - `node --check app-v2.js` passes.
@@ -266,6 +283,7 @@ Before distributing a future proprietary or differently licensed version, replac
 - Bubble interaction was checked: `pointer-events` is disabled on the background.
 - Navigation to the credit-card view was checked after the background was enabled.
 - Browser console check returned no warnings or errors during the validation pass.
+- Cursor spotlight and GSAP/ASCII motion enhancements have been added since the previous validation pass; they have not yet been browser-checked.
 
 ## Suggested next milestones
 
