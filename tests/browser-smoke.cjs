@@ -1,0 +1,182 @@
+/* Isolated browser session; never uses the user's browser profile or stored ledger. */
+const {chromium} = require('playwright');
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname,'..');
+const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};
+const server=http.createServer((req,res)=>{
+  const file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/\/$/,'/index.html'));
+  if(!file.startsWith(root+path.sep)){res.writeHead(403);return res.end();}
+  fs.readFile(file,(error,body)=>{res.writeHead(error?404:200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});res.end(error?'Not found':body);});
+});
+(async()=>{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  let browser;
+  try{
+    browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'msedge'});
+    const context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'Asia/Bangkok',reducedMotion:'reduce',acceptDownloads:true});
+    await context.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
+    const page=await context.newPage(),errors=[];
+    const choose=async(selector,value)=>{
+      const select=page.locator(selector);
+      const index=await select.evaluate((el,value)=>[...el.options].findIndex(option=>option.value===value),value);
+      assert.ok(index>=0,'Expected dropdown option '+value);
+      await select.locator('..').getByRole('combobox').click();
+      await page.getByRole('listbox').getByRole('option').nth(index).click();
+    };
+    page.on('pageerror',error=>errors.push(error.message));
+    page.on('dialog',dialog=>dialog.accept());
+    await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
+    await page.getByRole('heading',{name:'Monthly overview',exact:true}).waitFor();
+    assert.equal(await page.locator('.activity-month').count(),6);
+    const initial=await page.evaluate(()=>Finance.totals(txs().filter(row=>row.date.startsWith(txMonth))).expense);
+    await page.getByRole('button',{name:'Add transaction',exact:false}).click();
+    await page.getByLabel('Date',{exact:true}).fill('2030-01-13');
+    await page.getByLabel('Amount (THB)',{exact:true}).fill('123.45');
+    await choose('#category','Lunch');
+    await choose('#card','base-0');
+    await page.getByLabel('Note',{exact:true}).fill('QA <b>literal</b> coffee');
+    await page.locator('.save-modal').click();
+    await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    await page.waitForFunction(()=>txMonth==='2030-01' && document.querySelector('[data-action="overview-month"]')?.value==='2030-01');
+    assert.equal(await page.evaluate(()=>liveMonths().find(row=>row.month==='2030-01').expense),123.45);
+    await page.getByRole('button',{name:'Transactions',exact:false}).first().click();
+    await page.locator('#ledger-search').waitFor();
+    await page.getByRole('button',{name:'Details',exact:true}).click();
+    await page.getByRole('dialog').waitFor();
+    assert.ok((await page.locator('.entry-item').innerText()).includes('<b>literal</b>'));
+    assert.equal(await page.locator('.entry-item p b').count(),0);
+    await page.locator('[data-tx-edit]').click();
+    await page.getByLabel('Amount (THB)',{exact:true}).fill('150.25');
+    await page.locator('.save-modal').click();
+    await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    await page.reload();await page.locator('#app .kpi').first().waitFor();
+    assert.equal(await page.evaluate(()=>localTx[0].expense),150.25);
+    await page.getByRole('button',{name:'Transactions',exact:false}).first().click();
+    await choose('[data-action="tx-month"]','2030-01');
+    await page.locator('#ledger-search').fill('no match');
+    await page.locator('#ledger-filters').getByRole('button',{name:'Search',exact:true}).click();
+    await page.getByText('No matching activity.',{exact:false}).waitFor();
+    await page.getByRole('button',{name:'Clear filters'}).click();
+    await page.getByRole('button',{name:'Details',exact:true}).click();
+    await page.locator('[data-tx-delete]').click();
+    await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>localTx.length),0);
+    await page.getByRole('button',{name:'Undo delete'}).click();
+    assert.equal(await page.evaluate(()=>localTx.length),1);
+    await page.getByRole('button',{name:'Details',exact:true}).click();
+    await page.locator('[data-tx-duplicate]').click();
+    await page.locator('.save-modal').click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    assert.equal(await page.evaluate(()=>localTx.length),2);
+    assert.equal(await page.evaluate(()=>new Set(localTx.map(row=>row.id)).size),2);
+
+    // Imported mixed rows retain all original category allocations during note edits.
+    await choose('[data-action="tx-month"]','2024-06');
+    const imported=await page.evaluate(()=>txs().find(row=>row.source==='workbook'&&row.income>0&&row.expense>0));
+    await page.locator(`#ledger-search`).fill(imported.date);
+    await page.locator('#ledger-filters').getByRole('button',{name:'Search',exact:true}).click();
+    await page.locator(`[data-detail-day="${imported.date}"]`).click();
+    await page.locator(`[data-tx-edit="${imported.id}"]`).click();
+    assert.equal(await page.locator('#income').inputValue(),String(imported.income));
+    await page.getByLabel('Note',{exact:true}).fill('Corrected workbook note');
+    await page.locator('.save-modal').click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    assert.equal(await page.evaluate(id=>txs().find(row=>row.id===id).expense,imported.id),imported.expense);
+    assert.equal(await page.evaluate(id=>txs().find(row=>row.id===id).income,imported.id),imported.income);
+
+    // Backup round trip, old backup compatibility, malformed data, and storage failure.
+    const backup=await page.evaluate(()=>backupSource());
+    await page.evaluate(async text=>{localTx=[];txOverrides={};await loadBackup(new File([text],'savedata.js'));},backup);
+    assert.equal(await page.evaluate(()=>localTx.length),2);
+    assert.equal(await page.evaluate(()=>Object.keys(txOverrides).length),1);
+    const checks=await page.evaluate(()=>{
+      const payload=JSON.parse(JSON.parse(backupSource().split('\n')[1].slice('window.MONEYWISE_BACKUP_JSON = '.length,-1)));
+      delete payload.data['mw-tx-overrides'];validateBackup(payload);
+      const old=Object.keys(payload.data['mw-tx-overrides']).length===0;
+      payload.data['mw-tx'][0].expense=-50;
+      let rejected=false;try{validateBackup(payload)}catch{rejected=true}
+      const before=JSON.stringify(localTx),stored=localStorage.getItem('mw-tx'),original=Storage.prototype.setItem;
+      Storage.prototype.setItem=function(key,value){if(key==='mw-tx-overrides')throw Error('Quota');return original.call(this,key,value)};
+      let quota=false;try{persistTransactions([],{})}catch{quota=true}finally{Storage.prototype.setItem=original}
+      return {old,rejected,quota,unchanged:JSON.stringify(localTx)===before&&localStorage.getItem('mw-tx')===stored};
+    });
+    assert.deepEqual(checks,{old:true,rejected:true,quota:true,unchanged:true});
+    // Export only the filtered month, then validate local-date card calendar placement.
+    await choose('[data-action="tx-month"]','2030-01');
+    const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export CSV'}).click();
+    assert.ok((await download).suggestedFilename().endsWith('.csv'));
+    await page.getByRole('button',{name:'Credit cards',exact:false}).first().click();
+    await choose('[data-action="card-month"]','2030-01');
+    await page.waitForFunction(()=>document.querySelectorAll('.calendar-event:not(.due)').length>0);
+    assert.equal(await page.locator('.calendar-day').filter({has:page.locator('.calendar-event:not(.due)')}).first().locator('.calendar-number').innerText(),'13');
+    await page.getByRole('button',{name:'Installments',exact:false}).first().click();
+    await page.getByRole('button',{name:'Add plan',exact:false}).waitFor();
+    await page.getByRole('button',{name:'Categories',exact:false}).first().click();
+    await page.locator('.category-tile').first().waitFor();
+    await page.getByRole('button',{name:'Overview',exact:false}).first().click();
+    await page.locator('#ledger-notice .notice-close').click();
+    const settle=async()=>{await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.evaluate(()=>Promise.all(document.getAnimations().filter(animation=>animation.effect?.getTiming().iterations!==Infinity).map(animation=>animation.finished.catch(()=>{}))));};
+    await settle();
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-light.png'),fullPage:true});
+    await page.getByLabel('Dark mode').check();
+    await page.waitForFunction(()=>document.body.classList.contains('dark'));
+    await settle();
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-desktop.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await page.getByRole('button',{name:'Transactions',exact:false}).first().click();
+    await page.locator('#ledger-search').waitFor();
+    await settle();
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
+    assert.equal(overflow,false,'Mobile page must not overflow horizontally');
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-mobile.png'),fullPage:true});
+    // UI refinements: real keyboard paths, theme geometry, sticky navigation and motion.
+    await page.getByRole('button',{name:'Details',exact:true}).click();
+    await page.locator('.entry-category-chip').first().waitFor();
+    assert.ok((await page.locator('.entry-item').first().evaluate(el=>getComputedStyle(el).borderLeftWidth))==='4px');
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-day-detail.png'),fullPage:true});
+    await page.getByRole('button',{name:'Close',exact:true}).click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    await page.setViewportSize({width:1440,height:1000});
+    await page.getByRole('button',{name:'Month totals',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('[data-action="mode-month"]')?.getAttribute('aria-pressed')==='true');
+    assert.equal(await page.locator('[data-action="mode-day"]').getAttribute('aria-pressed'),'false');
+    await page.getByRole('button',{name:'Installments',exact:false}).first().click();
+    await page.getByRole('button',{name:'Add plan',exact:false}).click();
+    const term=page.getByRole('combobox',{name:'Term',exact:true});
+    await term.focus();await term.press('ArrowDown');await term.press('End');await term.press('Enter');
+    assert.equal(await page.locator('#months').inputValue(),'36');
+    await term.click();await term.press('Escape');
+    assert.equal(await page.getByRole('listbox').count(),0);assert.equal(await page.getByRole('dialog').count(),1);
+    await page.locator('#plan-amount').fill('3600');
+    await choose('#rate','0.59');
+    assert.equal(await page.locator('#monthly').inputValue(),'121.24');
+    await term.click();await settle();
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-menu-dark.png'),fullPage:true});
+    await term.press('Escape');await page.getByRole('button',{name:'Close',exact:true}).click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    await page.getByRole('button',{name:'Overview',exact:false}).first().click();await settle();
+    for(const dark of [false,true]){
+      await page.getByLabel('Dark mode').setChecked(dark);await settle();
+      const centered=await page.locator(dark?'.mode-moon':'.mode-sun').evaluate(icon=>{const a=icon.getBoundingClientRect(),b=icon.parentElement.getBoundingClientRect();return Math.abs((a.left+a.width/2)-(b.left+b.width/2))<.5&&Math.abs((a.top+a.height/2)-(b.top+b.height/2))<.5});
+      assert.equal(centered,true,'Theme SVG must stay centered in its thumb');
+    }
+    await page.evaluate(()=>window.scrollTo(0,500));
+    assert.ok(Math.abs((await page.locator('.sidebar').boundingBox()).y)<1,'Sidebar stays at viewport top');
+    await page.evaluate(()=>window.scrollTo(0,0));
+    await page.getByLabel('Dark mode').uncheck();await page.getByRole('combobox',{name:'Overview month',exact:true}).click();await settle();
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-menu-light.png'),fullPage:true});
+    await page.keyboard.press('Escape');
+    await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.getByRole('button',{name:'Payment trend',exact:true}).click();
+    await page.locator('.payment-line').waitFor();
+    await page.locator('.payment-chart-wrap').scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector('.payment-chart-wrap')?.classList.contains('ui-chart-visible'));
+    assert.equal(await page.locator('.payment-line').first().evaluate(el=>getComputedStyle(el).animationName),'ui-draw');
+    await page.emulateMedia({reducedMotion:'reduce'});
+    assert.equal(await page.locator('.payment-line').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+    assert.deepEqual(errors,[]);
+    console.log('PASS: add/edit/reload, filters, delete/undo, duplicate, workbook edits, backup compatibility/rollback, CSV, Bangkok calendar, existing views, dark mode and mobile navigation.');
+    console.log(`Initial monthly spending: ${initial}; isolated test profile discarded.`);
+    console.log('PASS: themed dropdown keyboard paths, parent-dialog Escape handling, selected tabs, installment recalculation, centered theme icons, sticky sidebar and reduced chart motion.');
+    await context.close();
+  } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
+})().catch(error=>{console.error(error);process.exitCode=1;});

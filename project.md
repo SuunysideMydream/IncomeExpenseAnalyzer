@@ -1,6 +1,6 @@
 # Moneywise — Project Notes
 
-Last updated: 2026-10-07
+Last updated: 2026-10-13
 
 ## Project goal
 
@@ -31,6 +31,11 @@ The long-term goal is to make it easy to record transactions, understand spendin
 - View monthly totals.
 - Paginate daily activity.
 - Open day details to see the individual transactions recorded for that date.
+- Edit, duplicate, or delete any local transaction or imported daily record; Undo the most recent deletion until the next transaction change or reload.
+- Search by note, category, card name, or date; combine type, category, and payment filters.
+- Sort days newest-first, oldest-first, or highest-spending-first.
+- Export matching records to CSV, including exact amounts, category breakdowns, and notes.
+- Monthly overview, ledger totals, and card spending now derive from the same effective transaction records, including edits and deletions.
 
 ### 3. Credit cards
 
@@ -69,6 +74,11 @@ The long-term goal is to make it easy to record transactions, understand spendin
 - Credit-card internal sheen, chip glint, and softly shifting decorative halo.
 - Animated bubble background behind the glass surfaces.
 - Reduced-motion and reduced-transparency fallbacks.
+- Themed dropdown menus across pages and dialogs, with selected indicators, arrow-key navigation, type-to-find, Escape dismissal, and focus restoration after a view updates.
+- Segmented view controls with a sliding selection marker, accent label, and active dot.
+- Color-coded day details: green income, coral expense, purple mixed records, and category-colored chips.
+- A custom SVG sun/moon switch with both icons centered inside the moving thumb.
+- Sticky desktop sidebar and mobile navigation; chart bars and lines enter with short, bounded staggers.
 
 ## Current implementation
 
@@ -76,6 +86,11 @@ This is currently a dependency-free static web application:
 
 - `index.html` — application shell and asset loading.
 - `app-v2.js` — application state, rendering, forms, calculations, local persistence, and event binding.
+- `finance-core.js` — shared, testable transaction identity, aggregation, validation, filtering, local-date, and CSV rules.
+- `ledger-features.js` — transaction editing, daily filters, monthly activity chart, data settings, backup integration, and Undo.
+- `ledger-features.css` — new ledger controls, chart, notifications, focus styles, and mobile navigation.
+- `ui-refinements.js` / `ui-refinements.css` — shared themed selects, segmented selection, centered theme icons, sticky navigation, transaction color accents, and chart entrances.
+- `tests/` — Node data tests and isolated Playwright browser regression checks.
 - `data.json` — browser-readable snapshot of the Excel workbook data.
 - `styles.css` — core layout and base visual styles.
 - `theme.css` — light/dark theme behavior and dark-mode overrides.
@@ -94,6 +109,7 @@ This is currently a dependency-free static web application:
 User-created changes are stored in browser `localStorage` using these keys:
 
 - `mw-tx` — added transactions.
+- `mw-tx-overrides` — edits and deletion markers for imported daily records; the published snapshot is never modified by these actions.
 - `mw-cards` — added credit cards.
 - `mw-plans` — added installment plans.
 - `mw-category-meta` — category names, types, and colors.
@@ -105,7 +121,49 @@ The application does not currently write changes back to the source Excel workbo
 
 Use the header's **Save data** control to export these user changes as a portable `savedata.js` backup. **Load data** imports that file after confirmation and replaces the browser's current saved changes. The backup is a strict data-only JavaScript wrapper; the app parses it as text and never executes the imported file. When supported, the browser save picker lets the user choose the destination; otherwise it downloads to the browser's configured download folder.
 
+Existing v1 backups without transaction overrides still import, defaulting to no workbook edits. New backups include the overrides. Import validates transaction records before writing and attempts rollback if storage fails. A CSV export is intended for spreadsheets, not backup restoration. Data & settings explains this distinction and provides backup shortcuts.
+
+Imported transaction IDs use the source date plus its occurrence on that date. Local legacy entries receive index-based IDs that are persisted before mutation. Keep the source snapshot stable: changing the ordering of multiple source rows on the same date requires an explicit ID migration.
+
 ## Completed issues and solutions
+
+### Issue: Controls and active views were visually inconsistent
+
+Solution (2026-10-13 UI pass):
+
+- Enhanced every single-choice select with a themed menu while retaining its underlying value and existing form events.
+- Added keyboard menu controls and focus restoration, and kept Escape within an open menu from also closing its parent dialog.
+- Added a moving selection marker and explicit active styling to daily/monthly and card-chart view selectors.
+- Replaced the loaded theme-switch asset with a small SVG-based switch; the downloaded asset remains in Assets as a reference.
+- Added colored transaction symbols, category chips, amount badges, and accent borders.
+- Made navigation sticky and animated chart bars/lines on entering view, with 35ms staggering capped at 245ms plus a 60ms lead-in. Reduced-motion preferences show the chart immediately.
+
+### Issue: New entries did not update all summaries or appear in month selectors
+
+Solution (2026-10-13):
+
+- Added one effective ledger combining the workbook snapshot, transaction overrides, and local entries.
+- Overview income/spending, daily totals, monthly totals, and the activity chart now read that ledger instead of cached workbook monthly summaries.
+- Month choices include source months, user-entry months, and the current month. Saving an entry selects its month and clears filters so it can be found immediately.
+- Added regression checks that reconcile the unedited ledger to the original workbook month totals.
+
+### Issue: Managing saved transactions required too much manual work
+
+Solution (2026-10-13):
+
+- Added edit, duplicate, confirmed deletion, and Undo in the daily detail workflow.
+- Preserved imported multi-category daily records through an aggregate editor.
+- Added filters, sorting, exact totals, and CSV export across all matching pages.
+- Included workbook edits in portable backups while accepting older backups without the new field.
+- Added storage-failure rollback checks and keyboard focus containment in dialogs.
+
+### Issue: Navigation disappeared on small screens
+
+Solution (2026-10-13):
+
+- Retained the existing navigation as a horizontally scrollable row on phones.
+- Made new filters and toolbar controls wrap at narrow widths.
+- Verified the ledger at 390px width without page-level horizontal overflow.
 
 ### Issue: The original spreadsheet is useful for history but not for daily review
 
@@ -216,26 +274,13 @@ Solution:
 
 ## Known limitations and open issues
 
-### Transaction editing is not complete
+### Workbook rows are daily aggregates, not receipts
 
-Transactions can currently be added and viewed in detail, but individual existing transactions do not yet have a full edit/delete workflow.
+Editing now supports imported records, but cannot recover individual receipts that the workbook never recorded. The editor explicitly preserves separate income, total spending, and all category allocations. Filters match whole records rather than splitting their amounts. The details screen explains this behavior.
 
-Recommended next step:
+### Monthly activity chart
 
-- Add stable transaction IDs.
-- Add Edit and Delete actions in the day-details modal.
-- Persist the updated transaction list in `mw-tx`.
-- Add a confirmation step before deletion.
-
-### Monthly infographic trend graph is incomplete
-
-The overview now includes interactive card-payment comparisons, but a dedicated month-over-month income, spending, and net-balance chart should still be added.
-
-Recommended next step:
-
-- Use the monthly values already available in `data.months`.
-- Add a responsive SVG chart with accessible labels.
-- Keep the chart readable in both themes and respect reduced motion.
+The overview now includes income/spending bars for the last six available months, signed net balances, exact-value tooltips, a totals table, and drill-through to the daily ledger. New-entry months and the current month are always selectable. Missing historical months are not filled with assumed values.
 
 ### Card-payment overview comparisons
 
@@ -250,30 +295,23 @@ Data created in the app is stored in `localStorage`. It is not synchronized acro
 
 Recommended next step:
 
-- Add import/export of JSON or CSV as a safe first step.
+- Continue using Save data / Load data for restorable backups and CSV for spreadsheet analysis.
 - Consider a backend only after the data model and privacy requirements are clear.
 
-### Imported records are read-only
+### Search and settings scope
 
-Imported workbook records are displayed from `data.json`. The current override model supports edits to imported cards and installment plans, but not every imported transaction.
+The header search opens the transaction filters. Settings now opens a data summary and save/load controls. Global card/plan search and additional preferences remain future enhancements.
 
-Recommended next step:
+### Other workflows still need a dedicated pass
 
-- Give every imported record a stable ID.
-- Store transaction overrides separately from the generated snapshot.
-
-### Settings and search buttons are visual placeholders
-
-The Settings and search controls are present in the shell but do not yet open functional panels.
-
-Recommended next step:
-
-- Use Settings for data export/import, theme preferences, and motion preferences.
-- Use search for transaction, card, plan, and category filtering.
+- Category renaming still needs reference migration across existing allocations.
+- Card due-date handling still uses the original day/month model and needs a dedicated statement-cycle workflow.
+- There is no reconciliation, bank feed, recurring-entry scheduler, or multi-device sync.
+- Persistence improvements in this update cover transactions and backup restore; card, plan, and category saves still use their existing storage paths.
 
 ### The app is currently static and dependency-free
 
-There is no build pipeline, test runner, database, authentication, or server API yet.
+There is no required build pipeline, database, authentication, or server API. The data layer now has dependency-free Node tests; the optional browser regression script uses Playwright with Edge.
 
 This is appropriate for the current personal prototype and GitHub Pages deployment, but a larger multi-device product would need an application architecture decision.
 
@@ -287,6 +325,19 @@ The supplied ASCII Glitch Ripple folder does not contain a separate license or a
 
 ## Validation completed
 
+### 2026-10-13 functionality pass
+
+- Additional UI checks passed after the refinement: actual themed-menu selection through the finance workflow, keyboard term selection and Escape handling, installment recalculation, active view state, sun/moon centering, sidebar position while scrolling, and normal/reduced chart motion. Light/dark dropdowns and mobile transaction details were also visually inspected.
+
+- `node --test tests/finance-core.test.cjs`: 10 passing checks, including reconciliation against every source workbook month.
+- `node tests/browser-smoke.cjs`: passed in an isolated Edge session with Bangkok timezone; add/edit/reload, search/filter, delete/Undo, duplicate, imported mixed records, backup round-trip, legacy backup compatibility, storage-failure rollback, CSV download, calendar date alignment, all existing views, theme switching, and mobile navigation.
+- Browser automation blocked external requests and used a fresh profile; existing personal browser storage was not touched.
+- Syntax checks passed for the modified application scripts; `git diff --check` passed.
+- Light-mode overview, dark-mode overview, and dark-mode mobile ledger screenshots were inspected after transitions settled.
+- Workbook calendar rendering now formats local dates directly rather than converting midnight to UTC.
+
+### Earlier visual passes
+
 - `node --check app-v2.js` passes.
 - `git diff --check` passes.
 - Light mode was checked in the browser.
@@ -299,9 +350,8 @@ The supplied ASCII Glitch Ripple folder does not contain a separate license or a
 
 ## Suggested next milestones
 
-1. Add transaction edit/delete actions.
-2. Add the monthly trend infographic.
-3. Add JSON/CSV backup and restore.
-4. Make search and Settings functional.
-5. Add a small automated smoke-test page for calculations, theme switching, and local-storage persistence.
-6. Decide whether the project will remain a local/GitHub Pages tool or become a synchronized multi-device application.
+1. Add category-rename migration and optional category budgets.
+2. Extend card statement cycles and payment reconciliation.
+3. Add recurring transactions with explicit confirmation before posting.
+4. Expand regression coverage to card, plan, and category editing.
+5. Decide whether the project will remain a local/GitHub Pages tool or become a synchronized multi-device application.

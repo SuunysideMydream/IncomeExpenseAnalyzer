@@ -1,0 +1,54 @@
+.ledger-workspace{min-width:0}
+/* Keep the app readable when the optional web fonts cannot load. */
+body{font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+h1,h2,h3,.kpi-value,.brand strong{font-family:'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
+button,input,select,textarea{font-family:inherit}
+.ledger-controls{gap:12px}
+.ledger-controls label{font-size:12px;color:var(--muted)}
+.ledger-controls>.secondary{margin-left:auto}
+.ledger-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:end;padding:20px 0;border-bottom:1px solid var(--line)}
+.ledger-filters label{display:grid;gap:6px;flex:1 1 130px;font-size:11px;color:var(--muted)}
+.ledger-filters .ledger-search{flex:2 1 230px}
+.ledger-filters input,.ledger-filters select{width:100%;min-height:42px;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:var(--surface,#fff);color:var(--ink);font:inherit;font-size:12px}
+.ledger-filters button{min-height:42px}
+.ledger-totals{display:flex;flex-wrap:wrap;gap:12px 22px;margin:18px 0 8px;font-size:12px;color:var(--muted)}
+.ledger-totals b{display:inline-block;margin-left:5px}
+.ledger-hint{font-size:11px;line-height:1.6;color:var(--muted);margin:10px 0 18px}
+.entry-list{display:grid;gap:12px}
+.entry-item{border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:12px;background:var(--surface-soft,#f4f8f6);font-size:13px}
+.entry-item p{font-size:12px;color:var(--muted);line-height:1.6;margin:6px 0;overflow-wrap:anywhere;white-space:pre-wrap}
+.entry-actions{display:flex;gap:8px;flex-wrap:wrap}
+.entry-actions button{min-height:36px}
+.entry-actions .danger{color:var(--coral,#d26756)}
+#ledger-notice{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:16px;max-width:calc(100vw - 28px);width:max-content;border:1px solid var(--line);border-radius:16px;padding:14px 18px;background:var(--surface,#fff);color:var(--ink);box-shadow:0 10px 35px #0002;font-size:13px}
+#ledger-notice>span{overflow-wrap:anywhere}
+.notice-close{border:0;background:transparent;color:var(--ink);font-size:22px;cursor:pointer}
+.activity-chart{margin-bottom:22px}
+.activity-chart .chart-head{flex-wrap:wrap;gap:12px}
+.activity-bars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:20px 0}
+.activity-month{min-width:0;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--ink);padding:10px 6px;cursor:pointer;font:inherit;font-size:12px}
+.activity-month:hover,.activity-month:focus-visible{border-color:var(--mint-deep);background:var(--surface-soft,#f4f8f6)}
+.activity-pair{height:150px;display:flex;gap:6px;align-items:end;justify-content:center;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.activity-pair i{width:25%;max-width:30px;border-radius:6px 6px 0 0;display:block}
+.activity-income{background:var(--mint-deep)}
+.activity-expense{background:var(--coral)}
+.activity-month small{display:block;font-size:10px;color:var(--muted);margin-top:7px;overflow-wrap:anywhere}
+.activity-chart summary{cursor:pointer;font-size:12px;color:var(--muted);padding:8px 0}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--mint-deep);outline-offset:3px}
+.main{min-width:0}
+.topbar{gap:15px;flex-wrap:wrap}
+.top-actions{flex-wrap:wrap;align-items:center}
+@media(max-width:700px){
+  .app-shell{display:block}
+  .sidebar{display:block;width:100%;padding:10px 12px;border-right:0;border-bottom:1px solid var(--line);position:relative}
+  .sidebar .brand,.sidebar-bottom{display:none}
+  .sidebar nav{display:flex;overflow-x:auto;gap:5px}
+  .sidebar .nav-item{flex:0 0 auto;padding:10px;font-size:11px;white-space:nowrap;gap:5px}
+  .toolbar{gap:12px;flex-wrap:wrap}
+  .activity-bars{gap:2px}
+  .activity-pair{height:110px;gap:3px}
+  .activity-month{font-size:10px;padding:8px 2px}
+  .activity-month small{font-size:9px}
+  .ledger-totals{gap:12px}
+  #ledger-notice{bottom:12px;font-size:12px;gap:10px}
+}
