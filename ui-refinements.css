@@ -1,4 +1,21 @@
 :root{--ui-ease:cubic-bezier(.2,.8,.2,1);--ui-accent:#227a5a;--ui-selection:#dff5e9}
+.card-color-editor{padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--surface-soft);display:grid;gap:14px}
+.card-color-top{display:flex;gap:12px;align-items:center}
+.card-color-swatch{width:52px;height:52px;flex-shrink:0;border-radius:13px;box-shadow:inset 0 0 0 1px #ffffff35,0 3px 8px #0002}
+.card-hex-field{display:grid;gap:5px;flex:1;min-width:0}
+.card-hex-field input{font-family:ui-monospace,Consolas,monospace;letter-spacing:.06em;background:var(--surface)}
+.card-hex-field input[aria-invalid=true]{border-color:#df725f;box-shadow:0 0 0 2px #df725f30}
+.card-color-presets{display:flex;flex-wrap:wrap;gap:9px}
+button.card-color-preset{position:relative;width:32px;height:32px;min-width:32px;min-height:32px;padding:0;border-radius:10px;border:2px solid transparent;background:var(--swatch);cursor:pointer;box-shadow:inset 0 0 0 1px #ffffff30}
+.card-color-preset[aria-pressed=true]{outline:2px solid var(--ui-accent);outline-offset:3px}
+.card-color-preset[aria-pressed=true]:after{content:'✓';color:white;font-weight:700;text-shadow:0 1px 3px #000;position:absolute;inset:0;display:grid;place-items:center}
+.card-color-adjust summary{cursor:pointer;font-size:12px;color:var(--ink);padding:4px 0}
+.card-color-adjust .card-color-channel{display:grid;grid-template-columns:45px minmax(0,1fr) 28px;align-items:center;gap:10px;margin-top:15px;color:var(--muted);font-size:11px}
+.card-color-channel input[type=range]{appearance:none;-webkit-appearance:none;min-width:0;width:100%;height:10px;padding:0;border:1px solid var(--line);border-radius:9px;background:var(--channel-track);cursor:pointer;box-shadow:none}
+.card-color-channel input::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border:3px solid var(--surface);border-radius:50%;background:var(--ink);box-shadow:0 1px 5px #0005}
+.card-color-channel input::-moz-range-thumb{width:14px;height:14px;border:3px solid var(--surface);border-radius:50%;background:var(--ink);box-shadow:0 1px 5px #0005}
+.card-color-channel output{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.card-color-editor>small{font-size:11px;line-height:1.5;color:var(--muted)}
 body.dark{--ui-accent:#9ce4c3;--ui-selection:#244c3e}
 .sidebar{position:sticky;top:0;height:100dvh;align-self:flex-start;flex-shrink:0;overflow-y:auto;z-index:8}
 .sidebar nav{flex-shrink:0}

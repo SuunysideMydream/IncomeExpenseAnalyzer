@@ -4,6 +4,8 @@ A static personal-finance dashboard built from the accompanying Excel tracker. I
 
 ## Run locally
 
+On Windows, double-click `Start-Preview.cmd` to start or reuse the local preview at `http://localhost:8766/`, then refresh your browser. Run it again after restarting your computer or if the preview stops. It uses installed Python 3 or the available Codex Python runtime.
+
 Open `index.html` with a local static server. For example:
 
 ```powershell

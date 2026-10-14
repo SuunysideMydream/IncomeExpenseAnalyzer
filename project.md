@@ -1,6 +1,6 @@
 # Moneywise — Project Notes
 
-Last updated: 2026-10-13
+Last updated: 2026-10-14
 
 ## Project goal
 
@@ -43,6 +43,7 @@ The long-term goal is to make it easy to record transactions, understand spendin
 - Store a friendly card name and mock last four digits.
 - Store card status and payment due day.
 - Preview the card design before saving.
+- Enter a HEX color (3 or 6 digits, with optional #), pick a preset, or adjust themed RGB sliders. All controls synchronize with the preview in both add and edit forms; invalid HEX values prevent saving.
 - View card spending by month.
 - View card spending and payment dates in a calendar layout.
 

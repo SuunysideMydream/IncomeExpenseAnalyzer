@@ -1,3 +1,46 @@
+function normalizeCardColor(value) {
+  const hex=String(value||'').trim().replace(/^#/,'');
+  if (/^[0-9a-f]{3}$/i.test(hex)) return '#'+[...hex].map(char=>char+char).join('').toUpperCase();
+  return /^[0-9a-f]{6}$/i.test(hex)?'#'+hex.toUpperCase():null;
+}
+function cardColorField(value) {
+  const color=normalizeCardColor(value)||'#2C9B72';
+  const presets=['#2C9B72','#397C86','#4D79B8','#9A78CE','#BC6088','#DF725F','#C58A39','#27394D'];
+  return `<div class="field full card-color-field"><label for="card-color-hex">Card color</label><div class="card-color-editor">
+    <input id="color" type="hidden" value="${color}">
+    <div class="card-color-top"><span class="card-color-swatch" aria-hidden="true" style="background:${color}"></span><div class="card-hex-field"><label for="card-color-hex">HEX code</label><input id="card-color-hex" type="text" value="${color}" placeholder="#2C9B72" maxlength="7" spellcheck="false" autocomplete="off" aria-describedby="card-color-help"></div></div>
+    <div class="card-color-presets" role="group" aria-label="Suggested card colors">${presets.map(hex=>`<button type="button" class="card-color-preset" data-card-color="${hex}" style="--swatch:${hex}" aria-label="Use ${hex}" aria-pressed="${color===hex}"></button>`).join('')}</div>
+    <details class="card-color-adjust"><summary>Fine-tune color</summary>${['Red','Green','Blue'].map((name,index)=>`<label class="card-color-channel" for="card-color-${index}"><span>${name}</span><input id="card-color-${index}" data-color-channel="${index}" type="range" min="0" max="255" step="1" value="${parseInt(color.slice(1+index*2,3+index*2),16)}"><output for="card-color-${index}"></output></label>`).join('')}</details>
+    <small id="card-color-help">Enter 3 or 6 HEX digits, with or without #.</small></div></div>`;
+}
+function setupCardColorPicker(root) {
+  const color=root.querySelector('#color'),hex=root.querySelector('#card-color-hex');
+  if(!hex)return;
+  const sliders=[...root.querySelectorAll('[data-color-channel]')];
+  const update=(value,format=true)=>{
+    const normalized=normalizeCardColor(value);if(!normalized)return false;
+    color.value=normalized;
+    if(format)hex.value=normalized;
+    hex.setAttribute('aria-invalid','false');
+    const error=root.querySelector('.modal-error');
+    if(error?.textContent==='Enter a valid HEX color, for example #2C9B72.')error.textContent='';
+    root.querySelector('.card-color-swatch').style.background=normalized;
+    const rgb=[0,1,2].map(index=>parseInt(normalized.slice(1+index*2,3+index*2),16));
+    sliders.forEach((slider,index)=>{
+      slider.value=rgb[index];slider.nextElementSibling.value=rgb[index];
+      const start=rgb.slice(),end=rgb.slice();start[index]=0;end[index]=255;
+      slider.style.setProperty('--channel-track',`linear-gradient(to right,rgb(${start.join(',')}),rgb(${end.join(',')}))`);
+    });
+    root.querySelectorAll('[data-card-color]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.cardColor===normalized)));
+    color.dispatchEvent(new Event('input',{bubbles:true}));return true;
+  };
+  hex.addEventListener('input',()=>update(hex.value,false));
+  hex.addEventListener('blur',()=>{if(!update(hex.value))hex.setAttribute('aria-invalid','true')});
+  sliders.forEach(slider=>slider.addEventListener('input',()=>update('#'+sliders.map(input=>Number(input.value).toString(16).padStart(2,'0')).join(''))));
+  root.querySelectorAll('[data-card-color]').forEach(button=>button.addEventListener('click',()=>update(button.dataset.cardColor)));
+  update(color.value);
+}
+
 /* Progressive enhancement: native selects retain values and form behavior. */
 (() => {
   const enhanced = new WeakMap(), segmentPositions = new Map();

@@ -173,9 +173,35 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('.payment-line').first().evaluate(el=>getComputedStyle(el).animationName),'ui-draw');
     await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await page.locator('.payment-line').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+    await page.getByRole('button',{name:'Credit cards',exact:false}).first().click();
+    await page.getByRole('button',{name:'Add card',exact:false}).click();
+    await page.locator('#name').fill('HEX test card');await page.locator('#last4').fill('1234');
+    await page.locator('#card-color-hex').fill('invalid');await page.locator('.save-modal').click();
+    assert.ok((await page.locator('.modal-error').innerText()).includes('HEX'));
+    await page.locator('#card-color-hex').fill('0af');await page.locator('#name').click();
+    assert.equal(await page.locator('#card-color-hex').inputValue(),'#00AAFF');
+    assert.equal(await page.locator('.modal-error').innerText(),'');
+    assert.equal(await page.locator('#color').inputValue(),'#00aaff'.toUpperCase());
+    assert.ok((await page.locator('#card-preview').getAttribute('style')).includes('0, 170, 255'));
+    await page.locator('[data-card-color="#9A78CE"]').click();
+    assert.equal(await page.locator('#card-color-hex').inputValue(),'#9A78CE');
+    await page.locator('.card-color-adjust summary').click();
+    await page.locator('#card-color-0').focus();await page.locator('#card-color-0').press('Home');
+    assert.equal(await page.locator('#card-color-hex').inputValue(),'#0078CE');
+    for(const dark of [false,true]){
+      await page.evaluate(dark=>applyTheme(dark?'dark':'light'),dark);
+      if(process.env.MW_SCREENSHOT_DIR)await page.locator('.modal').screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,`moneywise-color-${dark?'dark':'light'}.png`)});
+    }
+    await page.locator('.save-modal').click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    const savedCard=await page.evaluate(()=>localCards.find(card=>card.name==='HEX test card'));
+    assert.equal(savedCard.color,'#0078CE');
+    await page.locator(`[data-edit-card="${savedCard.id}"]`).click();
+    assert.equal(await page.locator('#card-color-hex').inputValue(),'#0078CE');
+    await page.getByRole('button',{name:'Close',exact:true}).click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
     assert.deepEqual(errors,[]);
     console.log('PASS: add/edit/reload, filters, delete/undo, duplicate, workbook edits, backup compatibility/rollback, CSV, Bangkok calendar, existing views, dark mode and mobile navigation.');
     console.log(`Initial monthly spending: ${initial}; isolated test profile discarded.`);
+    console.log('PASS: card HEX validation, shorthand, presets, RGB keyboard control, preview synchronization and saved edit color.');
     console.log('PASS: themed dropdown keyboard paths, parent-dialog Escape handling, selected tabs, installment recalculation, centered theme icons, sticky sidebar and reduced chart motion.');
     await context.close();
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
