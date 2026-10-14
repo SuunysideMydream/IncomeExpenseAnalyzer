@@ -183,11 +183,16 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('.modal-error').innerText(),'');
     assert.equal(await page.locator('#color').inputValue(),'#00aaff'.toUpperCase());
     assert.ok((await page.locator('#card-preview').getAttribute('style')).includes('0, 170, 255'));
-    await page.locator('[data-card-color="#9A78CE"]').click();
+    await page.locator('[data-card-color="#9A78CE"]').first().click();
     assert.equal(await page.locator('#card-color-hex').inputValue(),'#9A78CE');
-    await page.locator('.card-color-adjust summary').click();
+    await page.locator('.card-color-adjust summary').first().click();
     await page.locator('#card-color-0').focus();await page.locator('#card-color-0').press('Home');
     assert.equal(await page.locator('#card-color-hex').inputValue(),'#0078CE');
+    await choose('#card-kind','cash');
+    assert.equal(await page.locator('#card-preview.cash-card').count(),1);
+    await page.locator('#card-color-hex-end').fill('#F0A');await page.locator('#name').click();
+    assert.equal(await page.locator('#card-color-hex-end').inputValue(),'#FF00AA');
+    assert.ok((await page.locator('#card-preview').getAttribute('style')).includes('255, 0, 170'));
     for(const dark of [false,true]){
       await page.evaluate(dark=>applyTheme(dark?'dark':'light'),dark);
       if(process.env.MW_SCREENSHOT_DIR)await page.locator('.modal').screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,`moneywise-color-${dark?'dark':'light'}.png`)});
@@ -195,13 +200,25 @@ const server=http.createServer((req,res)=>{
     await page.locator('.save-modal').click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
     const savedCard=await page.evaluate(()=>localCards.find(card=>card.name==='HEX test card'));
     assert.equal(savedCard.color,'#0078CE');
+    assert.equal(savedCard.color2,'#FF00AA');assert.equal(savedCard.kind,'cash');
+    assert.equal(await page.locator('[aria-labelledby="wallet-cash-title"] .cash-card').count(),1);
+    assert.ok(await page.locator('[aria-labelledby="wallet-credit-title"] .credit-card').count()>0);
     await page.locator(`[data-edit-card="${savedCard.id}"]`).click();
     assert.equal(await page.locator('#card-color-hex').inputValue(),'#0078CE');
+    assert.equal(await page.locator('#card-color-hex-end').inputValue(),'#FF00AA');
+    assert.equal(await page.locator('#card-kind').inputValue(),'cash');
     await page.getByRole('button',{name:'Close',exact:true}).click();await page.locator('.modal-backdrop').waitFor({state:'detached'});
+    assert.ok((await page.locator('.cash-card').first().evaluate(el=>getComputedStyle(el,'::before').clipPath)).startsWith('polygon('));
+    await page.evaluate(async()=>{const source=backupSource();localCards=[];await loadBackup(new File([source],'savedata.js'));});
+    assert.equal(await page.evaluate(()=>localCards.find(card=>card.name==='HEX test card').color2),'#FF00AA');
+    assert.equal(await page.evaluate(()=>localCards.find(card=>card.name==='HEX test card').kind),'cash');
+    await settle();
+    if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-wallet-sections.png'),fullPage:true});
     assert.deepEqual(errors,[]);
     console.log('PASS: add/edit/reload, filters, delete/undo, duplicate, workbook edits, backup compatibility/rollback, CSV, Bangkok calendar, existing views, dark mode and mobile navigation.');
     console.log(`Initial monthly spending: ${initial}; isolated test profile discarded.`);
     console.log('PASS: card HEX validation, shorthand, presets, RGB keyboard control, preview synchronization and saved edit color.');
+    console.log('PASS: separate credit/cash sections, polygon cash pattern, two-color gradient editing and backup restoration.');
     console.log('PASS: themed dropdown keyboard paths, parent-dialog Escape handling, selected tabs, installment recalculation, centered theme icons, sticky sidebar and reduced chart motion.');
     await context.close();
   } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

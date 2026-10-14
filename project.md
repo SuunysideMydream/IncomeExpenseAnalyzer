@@ -39,11 +39,12 @@ The long-term goal is to make it easy to record transactions, understand spendin
 
 ### 3. Credit cards
 
-- Display tracked cards as distinctive color cards.
+- Display tracked cards in separate **Credit cards** and **Cash cards** sections, with counts and add actions. Existing cards default to credit; choose the type in the add/edit form. Credit cards use circular patterns, while cash cards use polygon facets.
+- Choose gradient start and end colors, each with independent HEX input, presets, and RGB sliders. Three-digit HEX values are accepted and expanded. Both colors and the selected card pattern appear in the live preview and remain saved when the card is edited or restored from backup.
 - Store a friendly card name and mock last four digits.
 - Store card status and payment due day.
 - Preview the card design before saving.
-- Enter a HEX color (3 or 6 digits, with optional #), pick a preset, or adjust themed RGB sliders. All controls synchronize with the preview in both add and edit forms; invalid HEX values prevent saving.
+- Use the themed color controls in either light or dark mode; invalid HEX values prevent saving.
 - View card spending by month.
 - View card spending and payment dates in a calendar layout.
 
@@ -91,6 +92,8 @@ This is currently a dependency-free static web application:
 - `ledger-features.js` — transaction editing, daily filters, monthly activity chart, data settings, backup integration, and Undo.
 - `ledger-features.css` — new ledger controls, chart, notifications, focus styles, and mobile navigation.
 - `ui-refinements.js` / `ui-refinements.css` — shared themed selects, segmented selection, centered theme icons, sticky navigation, transaction color accents, and chart entrances.
+- `card-wallet.js` — shared wallet card rendering, credit/cash sections, and live type/gradient preview. `kind` and `color2` are stored with cards and included in existing backups.
+- `Start-Preview.cmd` / `Start-Preview.ps1` — Windows double-click launcher that starts or reuses the local preview on port 8766 and checks the page response.
 - `tests/` — Node data tests and isolated Playwright browser regression checks.
 - `data.json` — browser-readable snapshot of the Excel workbook data.
 - `styles.css` — core layout and base visual styles.
@@ -120,6 +123,8 @@ User-created changes are stored in browser `localStorage` using these keys:
 
 The application does not currently write changes back to the source Excel workbook.
 
+For local Windows development, double-click `Start-Preview.cmd`. It starts the server from the repository folder and checks `http://localhost:8766/`. Run it again after a restart or if the preview server exits. `Start-Preview.ps1` prefers the bundled Codex Python runtime, then checks for Python 3 on the machine. The launcher does not publish the app to GitHub Pages.
+
 Use the header's **Save data** control to export these user changes as a portable `savedata.js` backup. **Load data** imports that file after confirmation and replaces the browser's current saved changes. The backup is a strict data-only JavaScript wrapper; the app parses it as text and never executes the imported file. When supported, the browser save picker lets the user choose the destination; otherwise it downloads to the browser's configured download folder.
 
 Existing v1 backups without transaction overrides still import, defaulting to no workbook edits. New backups include the overrides. Import validates transaction records before writing and attempts rollback if storage fails. A CSV export is intended for spreadsheets, not backup restoration. Data & settings explains this distinction and provides backup shortcuts.
@@ -127,6 +132,23 @@ Existing v1 backups without transaction overrides still import, defaulting to no
 Imported transaction IDs use the source date plus its occurrence on that date. Local legacy entries receive index-based IDs that are persisted before mutation. Keep the source snapshot stable: changing the ordering of multiple source rows on the same date requires an explicit ID migration.
 
 ## Completed issues and solutions
+
+### Issue: The card wallet needed to distinguish cash cards from credit cards
+
+Solution (2026-10-14):
+
+- Kept the existing cards in a dedicated Credit cards section and added a Cash cards section below it.
+- Added a type field in the shared add/edit form; existing cards default to credit cards.
+- Kept the circular appearance for credit cards and added angular polygon facets to cash cards.
+- Added independent gradient start and end colors with HEX entry, presets, and RGB controls. The preview tracks both colors and the card type. Card records and portable backups retain the new fields.
+
+### Issue: The local preview server stopped between sessions
+
+Solution (2026-10-14):
+
+- Added a double-click Windows launcher that reuses an active Moneywise preview or starts one from the repository folder on port 8766.
+- The launcher checks that the page responds and reports if another app is serving on that port.
+- Added the local run instructions to the README. Starting this local preview does not publish updates to GitHub Pages.
 
 ### Issue: Controls and active views were visually inconsistent
 
@@ -190,6 +212,7 @@ Solution:
 - Added editable card names, mock last four digits, colors, status, and due day.
 - Added a live card preview in the add/edit form.
 - Added color-coded calendar events and monthly card summaries.
+- Added separate cash-card styling and editable two-color gradients in the 2026-10-14 wallet update.
 
 ### Issue: Installment payments need to be recalculated consistently
 
@@ -325,6 +348,13 @@ Before distributing a future proprietary or differently licensed version, replac
 The supplied ASCII Glitch Ripple folder does not contain a separate license or attribution file. Confirm its source and distribution terms before publishing the repository. The app currently uses it only for the brand wordmark.
 
 ## Validation completed
+
+### 2026-10-14 wallet update
+
+- `node tests/browser-smoke.cjs` passed in an isolated browser: credit/cash sections, polygon cash pattern, two-color HEX and RGB editing, shorthand HEX expansion, preview updates, saved card edits, and backup restoration.
+- The same run passed the existing transaction, themed dropdown, installment, theme icon, sidebar, and reduced-motion checks.
+- `Start-Preview.ps1` returned HTTP 200 at `http://localhost:8766/`, and the current app script responded successfully.
+- Light and dark card-editor states and the wallet sections were visually inspected.
 
 ### 2026-10-13 functionality pass
 

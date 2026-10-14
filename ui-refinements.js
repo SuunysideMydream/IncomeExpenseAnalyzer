@@ -3,18 +3,22 @@ function normalizeCardColor(value) {
   if (/^[0-9a-f]{3}$/i.test(hex)) return '#'+[...hex].map(char=>char+char).join('').toUpperCase();
   return /^[0-9a-f]{6}$/i.test(hex)?'#'+hex.toUpperCase():null;
 }
-function cardColorField(value) {
+function cardColorField(value, suffix='', label='Card color') {
   const color=normalizeCardColor(value)||'#2C9B72';
   const presets=['#2C9B72','#397C86','#4D79B8','#9A78CE','#BC6088','#DF725F','#C58A39','#27394D'];
-  return `<div class="field full card-color-field"><label for="card-color-hex">Card color</label><div class="card-color-editor">
+  const markup=`<div class="field full card-color-field"><label for="card-color-hex">${label}</label><div class="card-color-editor">
     <input id="color" type="hidden" value="${color}">
     <div class="card-color-top"><span class="card-color-swatch" aria-hidden="true" style="background:${color}"></span><div class="card-hex-field"><label for="card-color-hex">HEX code</label><input id="card-color-hex" type="text" value="${color}" placeholder="#2C9B72" maxlength="7" spellcheck="false" autocomplete="off" aria-describedby="card-color-help"></div></div>
     <div class="card-color-presets" role="group" aria-label="Suggested card colors">${presets.map(hex=>`<button type="button" class="card-color-preset" data-card-color="${hex}" style="--swatch:${hex}" aria-label="Use ${hex}" aria-pressed="${color===hex}"></button>`).join('')}</div>
     <details class="card-color-adjust"><summary>Fine-tune color</summary>${['Red','Green','Blue'].map((name,index)=>`<label class="card-color-channel" for="card-color-${index}"><span>${name}</span><input id="card-color-${index}" data-color-channel="${index}" type="range" min="0" max="255" step="1" value="${parseInt(color.slice(1+index*2,3+index*2),16)}"><output for="card-color-${index}"></output></label>`).join('')}</details>
     <small id="card-color-help">Enter 3 or 6 HEX digits, with or without #.</small></div></div>`;
+  return markup.replace(/(id|for|aria-describedby)="([^"]+)"/g,(_,attribute,id)=>`${attribute}="${id}${suffix}"`);
 }
 function setupCardColorPicker(root) {
-  const color=root.querySelector('#color'),hex=root.querySelector('#card-color-hex');
+  root.querySelectorAll('.card-color-field').forEach(setupCardColorStop);
+}
+function setupCardColorStop(root) {
+  const color=root.querySelector('input[type=hidden]'),hex=root.querySelector('input[type=text]');
   if(!hex)return;
   const sliders=[...root.querySelectorAll('[data-color-channel]')];
   const update=(value,format=true)=>{
@@ -22,8 +26,8 @@ function setupCardColorPicker(root) {
     color.value=normalized;
     if(format)hex.value=normalized;
     hex.setAttribute('aria-invalid','false');
-    const error=root.querySelector('.modal-error');
-    if(error?.textContent==='Enter a valid HEX color, for example #2C9B72.')error.textContent='';
+    const modalRoot=root.closest('.modal'),error=modalRoot?.querySelector('.modal-error');
+    if(error?.textContent==='Enter a valid HEX color, for example #2C9B72.'&&[...modalRoot.querySelectorAll('.card-hex-field input')].every(input=>normalizeCardColor(input.value)))error.textContent='';
     root.querySelector('.card-color-swatch').style.background=normalized;
     const rgb=[0,1,2].map(index=>parseInt(normalized.slice(1+index*2,3+index*2),16));
     sliders.forEach((slider,index)=>{
