@@ -49,7 +49,7 @@ function setupCardColorStop(root) {
 (() => {
   const enhanced = new WeakMap(), segmentPositions = new Map();
   let current = null, serial = 0, typeBuffer = '', typeTime = 0, restoreControl = null;
-  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.body.dataset.motion==='reduced';
   const chevron = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>';
   const labelFor = select => {
     const label = select.labels?.[0] || select.parentElement.querySelector('label');
@@ -196,5 +196,6 @@ function setupCardColorStop(root) {
       });
       observed.add(chart);chartObserver.observe(chart);
     });
+    if(typeof Space!=='undefined')Space.enhance(root);
   };
 })();

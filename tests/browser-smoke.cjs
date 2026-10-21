@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const root = path.resolve(__dirname,'..');
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json'};
 const server=http.createServer((req,res)=>{
-  const file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/\/$/,'/index.html'));
+  const file=path.resolve(root,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/\/$/,'/legacy.html'));
   if(!file.startsWith(root+path.sep)){res.writeHead(403);return res.end();}
   fs.readFile(file,(error,body)=>{res.writeHead(error?404:200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});res.end(error?'Not found':body);});
 });
@@ -106,7 +106,7 @@ const server=http.createServer((req,res)=>{
     await choose('[data-action="tx-month"]','2030-01');
     const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export CSV'}).click();
     assert.ok((await download).suggestedFilename().endsWith('.csv'));
-    await page.getByRole('button',{name:'Credit cards',exact:false}).first().click();
+    await page.locator('.nav-item[data-view="cards"]').click();
     await choose('[data-action="card-month"]','2030-01');
     await page.waitForFunction(()=>document.querySelectorAll('.calendar-event:not(.due)').length>0);
     assert.equal(await page.locator('.calendar-day').filter({has:page.locator('.calendar-event:not(.due)')}).first().locator('.calendar-number').innerText(),'13');
@@ -116,7 +116,7 @@ const server=http.createServer((req,res)=>{
     await page.locator('.category-tile').first().waitFor();
     await page.getByRole('button',{name:'Overview',exact:false}).first().click();
     await page.locator('#ledger-notice .notice-close').click();
-    const settle=async()=>{await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.evaluate(()=>Promise.all(document.getAnimations().filter(animation=>animation.effect?.getTiming().iterations!==Infinity).map(animation=>animation.finished.catch(()=>{}))));};
+    const settle=async()=>{await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.evaluate(()=>Promise.all(document.getAnimations().filter(animation=>animation.playState==='running'&&animation.effect?.getTiming().iterations!==Infinity&&animation.effect?.target?.getClientRects().length).map(animation=>animation.finished.catch(()=>{}))));};
     await settle();
     if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-light.png'),fullPage:true});
     await page.getByLabel('Dark mode').check();
@@ -166,6 +166,7 @@ const server=http.createServer((req,res)=>{
     if(process.env.MW_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.MW_SCREENSHOT_DIR,'moneywise-menu-light.png'),fullPage:true});
     await page.keyboard.press('Escape');
     await page.emulateMedia({reducedMotion:'no-preference'});
+    await page.locator('.workbook-history summary').click();
     await page.getByRole('button',{name:'Payment trend',exact:true}).click();
     await page.locator('.payment-line').waitFor();
     await page.locator('.payment-chart-wrap').scrollIntoViewIfNeeded();
@@ -173,7 +174,7 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('.payment-line').first().evaluate(el=>getComputedStyle(el).animationName),'ui-draw');
     await page.emulateMedia({reducedMotion:'reduce'});
     assert.equal(await page.locator('.payment-line').first().evaluate(el=>getComputedStyle(el).animationName),'none');
-    await page.getByRole('button',{name:'Credit cards',exact:false}).first().click();
+    await page.locator('.nav-item[data-view="cards"]').click();
     await page.getByRole('button',{name:'Add card',exact:false}).click();
     await page.locator('#name').fill('HEX test card');await page.locator('#last4').fill('1234');
     await page.locator('#card-color-hex').fill('invalid');await page.locator('.save-modal').click();

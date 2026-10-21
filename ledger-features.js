@@ -7,10 +7,10 @@ let undoTransaction = null;
 let ledgerEventsBound = false;
 
 function monthOptions(selected) {
-  return Finance.months(txs(), data.months.map(row => row.month)).reverse()
+  return Finance.months(txs(), [...data.months.map(row => row.month),selected]).reverse()
     .map(month => `<option value="${month}" ${month === selected ? 'selected' : ''}>${monthText(month)}</option>`).join('');
 }
-function liveMonths() { return Finance.monthly(txs(), data.months.map(row => row.month)); }
+function liveMonths() { return Finance.monthly(txs(), [...data.months.map(row => row.month),txMonth].filter(Boolean)); }
 function matchingTransactions(month = txMonth) { return Finance.filter(txs(), {...txFilters, month}, cards()); }
 function signedMoney(value) { return `${value < 0 ? '−' : ''}${baht2(value)}`; }
 function ledgerDays() {
@@ -48,7 +48,7 @@ function monthTotalsView() {
 function transactionDetails(date) {
   const rows = (active === 'transactions' ? matchingTransactions() : txs()).filter(row => row.date === date), sum = Finance.totals(rows);
   return `<div class="detail-summary"><div><span>Date</span><b>${esc(date)}</b></div><div><span>Income</span><b>${baht2(sum.income)}</b></div><div><span>Spending</span><b>${baht2(sum.expense)}</b></div></div>
-    <p class="ledger-hint">Workbook entries represent a day’s totals, not individual receipts. Editing preserves their separate income and category amounts.</p>
+    <p class="ledger-hint">${rows.some(row=>row.source==='workbook')?'Workbook entries represent a day’s totals, not individual receipts. Editing preserves their separate income and category amounts.':'Edit an entry, duplicate a similar purchase, or delete it with Undo available.'}</p>
     <div class="entry-list">${rows.map(row => `<article class="entry-item" style="--entry-accent:${row.income && row.expense ? '#8f79ca' : row.income ? '#2c9b72' : '#df725f'}"><div><div class="entry-heading"><span class="entry-symbol" aria-hidden="true">${row.income && row.expense ? '↕' : row.income ? '↗' : '↘'}</span><strong>${row.source === 'workbook' ? 'Workbook daily record' : row.income ? 'Income' : 'Expense'}</strong></div>
       <div class="entry-category-chips">${Object.entries(row.categories || {}).filter(([,amount]) => amount).map(([name,amount]) => `<span class="entry-category-chip" style="--category-color:${/^#[0-9a-f]{6}$/i.test(meta(name).color)?meta(name).color:'#718096'}">${esc(name)} <b>${baht2(amount)}</b></span>`).join('') || `<span class="entry-category-chip" style="--category-color:#2c9b72">${esc(row.category || 'Uncategorized')}</span>`}</div>
       <p>${esc(row.note || 'No note')}${row.card ? ` · ${esc(cards().find(card => card.id === row.card)?.name || 'Card')}` : ''}</p>
@@ -57,7 +57,7 @@ function transactionDetails(date) {
 }
 function transactionFields(row = {}) {
   const aggregate = row.source === 'workbook' || Object.keys(row.categories || {}).length > 1 || (row.income > 0 && row.expense > 0);
-  const type = row.income > 0 && !row.expense ? 'income' : 'expense';
+  const type = row.type || (row.income > 0 && !row.expense ? 'income' : 'expense');
   const cat = row.category || Object.keys(row.categories || {}).find(key => row.categories[key]) || '';
   return `<div class="form-section" data-transaction-form data-aggregate="${aggregate}"><div class="form-grid">
     <div class="field"><label for="date">Date</label><input id="date" type="date" required value="${esc(row.date || Finance.localDate())}"></div>
@@ -185,12 +185,14 @@ function bindLedgerFeatures() {
       try { persistTransactions(undoTransaction.local,undoTransaction.overrides);undoTransaction=null;render();notifyLedger('Entry restored.'); } catch(error) { notifyLedger(error.message); }
     }
   });
+  if(!document.querySelector('.space-search')){
   document.querySelector('.icon-button').setAttribute('aria-label','Search transactions');
   document.querySelector('.icon-button').onclick = () => {
     active='transactions';txMode='day';render();
     // View transitions defer the DOM update until their snapshot completes.
     requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector('#ledger-search')?.focus()));
   };
+  }
   document.querySelector('.settings').onclick = () => modal('Data & settings','Your personal ledger stays in this browser.',
     `<div class="detail-summary"><div><span>Added records</span><b>${localTx.length}</b></div><div><span>Edited / hidden workbook records</span><b>${Object.keys(txOverrides).length}</b></div></div>
     <p class="ledger-hint">Save data downloads savedata.js with your entries, workbook edits, cards, installment plans, categories and theme. Load data restores a backup on this device. GitHub Pages does not synchronize browser changes between devices. The published workbook snapshot is loaded separately.</p>
@@ -230,7 +232,7 @@ function restoreBackupValues(values) {
 
 function monthlyActivityChart() {
   const rows = liveMonths().filter(row => row.month <= txMonth).slice(-6), max = Math.max(1,...rows.flatMap(row => [row.income,row.expense]));
-  return `<section class="card activity-chart"><div class="chart-head"><div><h3>Income & spending</h3><p>Last 6 available months · select a month to explore its daily ledger</p></div><div class="legend"><span>Income</span><span class="expense">Spending</span></div></div>
-    <div class="activity-bars">${rows.map(row => `<button data-open-month="${row.month}" class="activity-month" aria-label="${monthText(row.month)}: income ${baht2(row.income)}, spending ${baht2(row.expense)}, net ${signedMoney(row.net)}" title="Income ${baht2(row.income)} · Spending ${baht2(row.expense)} · Net ${signedMoney(row.net)}"><span class="activity-pair"><i style="height:${Math.max(1,row.income/max*100)}%" class="activity-income"></i><i style="height:${Math.max(1,row.expense/max*100)}%" class="activity-expense"></i></span><span>${new Date(`${row.month}-01T12:00:00`).toLocaleDateString('en-US',{month:'short',year:'2-digit'})}</span><small>${signedMoney(row.net)} net</small></button>`).join('')}</div>
+  return `<section class="card activity-chart"><div class="chart-head"><div><h3>Income & spending</h3><p>Last ${rows.length} available ${rows.length===1?'month':'months'} · select a month to explore its daily ledger</p></div><div class="legend"><span>Income</span><span class="expense">Spending</span></div></div>
+    <div class="activity-bars" style="grid-template-columns:repeat(${Math.max(1,rows.length)},minmax(0,1fr))">${rows.map(row => `<button data-open-month="${row.month}" class="activity-month" aria-label="${monthText(row.month)}: income ${baht2(row.income)}, spending ${baht2(row.expense)}, net ${signedMoney(row.net)}" title="Income ${baht2(row.income)} · Spending ${baht2(row.expense)} · Net ${signedMoney(row.net)}"><span class="activity-pair"><i style="height:${Math.max(1,row.income/max*100)}%" class="activity-income"></i><i style="height:${Math.max(1,row.expense/max*100)}%" class="activity-expense"></i></span><span>${new Date(`${row.month}-01T12:00:00`).toLocaleDateString('en-US',{month:'short',year:'2-digit'})}</span><small>${signedMoney(row.net)} net</small></button>`).join('')}</div>
     <details><summary>View exact monthly totals</summary><div class="table-wrap"><table><thead><tr><th>Month</th><th>Income</th><th>Spending</th><th>Net</th></tr></thead><tbody>${rows.map(row => `<tr><td>${monthText(row.month)}</td><td>${baht2(row.income)}</td><td>${baht2(row.expense)}</td><td>${signedMoney(row.net)}</td></tr>`).join('')}</tbody></table></div></details></section>`;
 }

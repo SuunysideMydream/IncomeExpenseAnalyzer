@@ -1,50 +1,22 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Moneywise — Income & Expense</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="modal.css" />
-  <link rel="stylesheet" href="motion.css?v=20261006-apple1" />
-  <link rel="stylesheet" href="ledger.css" />
-  <link rel="stylesheet" href="button-overhaul.css?v=20261007-backup1" />
-  <link rel="stylesheet" href="theme.css?v=20261006-darkfix2" />
-  <link rel="stylesheet" href="interaction.css?v=20261007-card-insights1" />
-  <link rel="stylesheet" href="liquid-glass.css?v=20261006-glass1" />
-  <link rel="stylesheet" href="bubble-background.css?v=20261006-bubbles1" />
-  <link rel="stylesheet" href="Assets/vengeance_ui/ascii_glitch_ripple/ascii-glitch-ripple.css" />
-  <link rel="stylesheet" href="motion-enhancements.css?v=20261007-card-motion2" />
-  <link rel="stylesheet" href="ledger-features.css?v=20261013-1" />
-  <link rel="stylesheet" href="ui-refinements.css?v=20261014-wallet1" />
-</head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand"><div class="brand-mark">↗</div><div><strong data-ascii-glitch data-dur="760" data-spread="1.35">moneywise</strong><span>personal finance</span></div></div>
-      <nav>
-        <button class="nav-item active" data-view="overview"><span>▦</span>Overview</button>
-        <button class="nav-item" data-view="transactions"><span>＋</span>Transactions</button>
-        <button class="nav-item" data-view="cards"><span>▣</span>Credit cards</button>
-        <button class="nav-item" data-view="installments"><span>◷</span>Installments</button>
-        <button class="nav-item" data-view="categories"><span>◌</span>Categories</button>
-      </nav>
-      <div class="sidebar-bottom"><div class="source-note">Imported from<br><b>My Income Expense.xlsx</b></div><button class="settings">⚙ Settings</button></div>
-    </aside>
-    <main class="main">
-      <div class="ambient-orb" aria-hidden="true"></div>
-      <header class="topbar"><div><p class="eyebrow">PERSONAL FINANCE</p><h1 id="page-title">Good evening, Alex.</h1></div><div class="top-actions"><button class="backup-button secondary" id="load-backup-button" type="button">Load data</button><button class="backup-button primary" id="save-backup-button" type="button">Save data</button><input id="backup-file" type="file" accept=".js,application/javascript,text/javascript" hidden><label class="mode-switch" title="Toggle light and dark mode"><input id="theme-toggle" type="checkbox" role="switch" aria-label="Dark mode"><span class="mode-track" aria-hidden="true"><span class="mode-thumb"><svg class="mode-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="mode-moon" viewBox="0 0 24 24"><path d="M19.5 15.5A8 8 0 0 1 8.5 4.5a8.5 8.5 0 1 0 11 11Z"/></svg></span></span></label><button class="icon-button">⌕</button><button class="avatar">A</button></div></header>
-      <section id="app"></section>
-    </main>
-  </div>
-  <!-- GPL-2.0 asset retained in Assets/JS-Animated-Bubbles-Background-master/ -->
-  <script src="Assets/JS-Animated-Bubbles-Background-master/movingbubbles.js?v=20261006-bubbles1"></script>
-  <script src="Assets/gsap/gsap.min.js?v=20261007-motion1"></script>
-  <script src="Assets/vengeance_ui/ascii_glitch_ripple/ascii-glitch-ripple.js?v=20261007-motion1"></script>
-  <script src="finance-core.js?v=20261013-1"></script>
-  <script src="ledger-features.js?v=20261013-ui1"></script>
-  <script src="ui-refinements.js?v=20261014-wallet1"></script>
-  <script src="card-wallet.js?v=20261014-wallet1"></script>
-  <script src="app-v2.js?v=20261014-wallet1"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#7460dc" />
+    <meta
+      name="description"
+      content="Your personal income, spending, cards, and installment plans. Built with React and TypeScript."
+    />
+    <title>Moneywise — Your personal money space</title>
+    <link rel="icon" type="image/svg+xml" href="/Assets/moneywise-mark.svg" />
+  </head>
+  <body>
+    <div id="root" data-moneywise-react="2"></div>
+    <noscript
+      >Moneywise needs JavaScript to open your saved ledger. Your data has not
+      been changed.</noscript
+    >
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

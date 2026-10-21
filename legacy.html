@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#7460dc">
+  <meta name="description" content="A personal space for your income, everyday spending, cards, and installment plans.">
+  <title>Moneywise — Your personal money space</title>
+  <link rel="icon" type="image/svg+xml" href="Assets/moneywise-mark.svg">
+  <link rel="stylesheet" href="space.css?v=20261019-space1">
+</head>
+<body>
+  <header class="space-header sidebar">
+    <div class="space-head-row">
+      <a class="space-brand" href="./" aria-label="Moneywise home"><span class="space-brand-mark" data-icon="wallet"></span><strong>moneywise</strong><small>PERSONAL</small></a>
+      <button class="space-search icon-button" type="button" data-space-action="search" aria-label="Search your finances"><span data-icon="search"></span><span>Search your money space</span><kbd>Ctrl K</kbd></button>
+      <div class="space-head-tools">
+        <div class="space-backup-actions"><button class="backup-button secondary" id="load-backup-button" type="button">Load data</button><button class="backup-button primary" id="save-backup-button" type="button">Save data</button><button class="backup-button secondary" id="clear-data-button" type="button">Clear data</button></div>
+        <input id="backup-file" type="file" accept=".js,application/javascript,text/javascript" hidden>
+        <button class="space-shell-icon" data-space-action="notifications" aria-label="View payment reminders"><span data-icon="bell"></span><span id="space-reminder-count" class="space-reminder-dot" hidden></span></button>
+        <label class="mode-switch" title="Toggle light and dark mode"><input id="theme-toggle" type="checkbox" role="switch" aria-label="Dark mode"><span class="mode-track" aria-hidden="true"><span class="mode-thumb"><svg class="mode-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg class="mode-moon" viewBox="0 0 24 24"><path d="M19.5 15.5A8 8 0 0 1 8.5 4.5a8.5 8.5 0 1 0 11 11Z"/></svg></span></span></label>
+        <button class="space-profile-trigger avatar" data-space-action="profile" aria-label="Workspace menu" aria-haspopup="menu"><span data-space-initials>MW</span></button>
+      </div>
+    </div>
+    <div class="space-nav-band"><div class="space-nav-row">
+      <nav aria-label="Main navigation">
+        <button class="nav-item active" data-view="overview"><span data-icon="overview"></span>Overview</button>
+        <button class="nav-item" data-view="transactions"><span data-icon="transactions"></span>Transactions</button>
+        <button class="nav-item" data-view="cards"><span data-icon="cards"></span>Cards</button>
+        <button class="nav-item" data-view="installments"><span data-icon="installments"></span>Installments</button>
+        <button class="nav-item" data-view="categories"><span data-icon="categories"></span>Categories</button>
+      </nav>
+      <div class="space-nav-meta"><span class="space-status"><i></i>Saved on this browser</span><button class="settings"><span data-icon="settings"></span>Data & settings</button></div>
+    </div></div>
+  </header>
+  <main class="main">
+    <div class="space-page-heading"><div><div class="space-breadcrumb"><span data-icon="home"></span><span data-space-name>My workspace</span><span>/</span><span id="space-section-label">Overview</span></div><h1 id="page-title">Your money, at a glance.</h1></div><div class="space-today"><span data-icon="calendar"></span><span id="space-today"></span></div></div>
+    <section id="app" aria-label="Finance workspace"></section>
+    <footer class="space-footer"><div class="source-note">Your personal ledger</div><div><button data-space-action="profile">Workspace preferences</button><span aria-hidden="true"> · </span><button data-space-action="settings">Data & settings</button><span aria-hidden="true"> · </span><button data-space-action="intro">Replay welcome</button></div></footer>
+  </main>
+  <div id="space-splash" class="space-splash" role="status" aria-live="polite">
+    <div class="space-liquid-loader"><svg viewBox="0 0 120 120" aria-hidden="true"><defs><clipPath id="space-wave-clip"><circle cx="60" cy="60" r="48"/></clipPath></defs><circle class="space-loader-ring" cx="60" cy="60" r="49"/><g clip-path="url(#space-wave-clip)"><g class="space-wave-fill"><path class="space-wave-back" d="M-240 62Q-210 40-180 62T-120 62T-60 62T0 62T60 62T120 62T180 62T240 62T300 62T360 62V140H-240Z"/><path class="space-wave-front" d="M-240 69Q-210 47-180 69T-120 69T-60 69T0 69T60 69T120 69T180 69T240 69T300 69T360 69V140H-240Z"/></g></g><path class="space-loader-check" d="m44 62 11 11 23-25"/></svg></div>
+    <strong>moneywise</strong><p data-splash-message>Opening your personal money space.</p>
+  </div>
+  <noscript><p style="padding:24px">Moneywise needs JavaScript to open your personal ledger. Your saved browser data has not been changed.</p><style>.space-splash{display:none}</style></noscript>
+  <script src="finance-core.js?v=20261019-space1"></script>
+  <script src="ledger-features.js?v=20261019-space1"></script>
+  <script src="ui-refinements.js?v=20261019-space1"></script>
+  <script src="card-wallet.js?v=20261019-space1"></script>
+  <script src="daily-use.js?v=20261019-space1"></script>
+  <script src="space-ui.js?v=20261019-space1"></script>
+  <script src="space-views.js?v=20261019-space1"></script>
+  <script src="app-v2.js?v=20261019-space1"></script>
+</body>
+</html>

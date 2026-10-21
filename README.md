@@ -1,56 +1,92 @@
 # Moneywise — Personal Income & Expense
 
-A static personal-finance dashboard built from the accompanying Excel tracker. It includes a daily transaction ledger, credit-card wallet and calendar, editable installment plans, and color-coded categories.
+A personal-finance workspace built with **React + TypeScript + Vite**, using the supplied shadcnspace designs as real React components. It includes Overview, daily transactions, credit/cash Cards, an editable installment calculator, and color-coded categories.
+
+## What stays compatible
+
+The migration keeps all eleven existing `mw-*` localStorage keys, workbook/fresh mode, imported-record identities, category aliases, budgets, card gradients, pinned plans and workspace preferences. Startup reads existing storage without rewriting it. The source `data.json` workbook snapshot and Excel file are unchanged.
+
+**Stay on http://localhost:8766/** to continue using this browser's localhost ledger. Local storage is origin-specific: `127.0.0.1`, another port, another browser and your GitHub Pages site have separate data. Use **Save data / Load data** to move a ledger deliberately. Both existing v1 and v2 `savedata.js` backups import as data only; the app never executes them. There is no backend, bank sync, account login or cloud storage.
 
 ## Run locally
 
-On Windows, double-click `Start-Preview.cmd` to start or reuse the local preview at `http://localhost:8766/`, then refresh your browser. Run it again after restarting your computer or if the preview stops. It uses installed Python 3 or the available Codex Python runtime.
-
-Open `index.html` with a local static server. For example:
+Use Node.js **22.12+** (the tested environment uses Node 24) and pnpm **11.25.0**:
 
 ```powershell
-python -m http.server 8765
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Then visit `http://localhost:8765`.
+Open **http://localhost:8766/**. Vite compiles TSX and refreshes the page as source files change. Do not open `index.html` directly or serve the source folder using Python; browsers cannot run the uncompiled TSX entry.
 
-## Publish with GitHub Pages
+On this Windows computer, double-click **Start-Preview.cmd** to start or reuse a hidden, loopback-only Vite server on port 8766. The launcher checks both the Moneywise document and Vite runtime; it will not replace an unrelated occupied port. It uses installed Node or the bundled Codex Node runtime. Install dependencies once before using it.
 
-1. Push this repository to GitHub.
-2. In the GitHub repository, open **Settings → Pages**.
-3. Select **Deploy from a branch**, then choose `main` and `/ (root)`.
-4. Save. GitHub will provide the public site URL after deployment.
+### Automatic preview in Codex
 
-## Data
+The parent Codex project (`D:\Money Income and Expense Personal`) has a local `.codex/hooks.json` SessionStart hook for startup/resume, calling `Start-Preview.ps1 -Quiet`. The existing command is unchanged; the launcher now starts Vite instead of Python.
 
-`data.json` is the published, browser-readable snapshot of the workbook data. Changes made through the UI are saved only in the browser’s local storage for now; they do not change the source Excel workbook.
+Review/trust the hook once in Codex. Untrusted hooks are skipped. This runs when a Codex session starts/resumes, not every File Explorer folder click. It is not a Windows startup service. The hook is outside this Git repository; update its absolute path if moving the project. See the [official hook/trust documentation](https://learn.chatgpt.com/docs/hooks).
+
+## Build and publish on GitHub Pages
+
+```powershell
+pnpm build
+pnpm preview
+```
+
+The deployable website is **dist/**, not the TypeScript source tree. Vite uses relative asset URLs so the same build works beneath `/IncomeExpenseAnalyzer/`. There is no server requirement for the built website.
+
+A build/test/deploy workflow is provided in [.github/workflows/pages.yml](.github/workflows/pages.yml). Before your next publication, set **GitHub repository → Settings → Pages → Source → GitHub Actions**, then push your changes to `main` when ready. The workflow installs the lockfile, runs data checks, builds, tests the built pages, and publishes only `dist/`. Do not keep the old “Deploy from branch / root” setting for the new TSX source. See [Vite deployment guidance](https://vite.dev/guide/static-deploy.html#github-pages).
+
+No GitHub settings, commits, pushes or live deployments are performed by the migration itself. Keeping your existing GitHub Pages origin preserves the browser data for that site.
 
 ## Daily workflow
 
-- Add a transaction, then open its day’s **Details** to edit, duplicate, or delete it. Delete offers Undo until the next transaction change or reload.
-- Use search, type/category/payment filters, and day sorting to find entries. Totals reflect matching whole records; workbook rows may contain several categories and both income and expense.
-- Overview and month totals use the current ledger, including saved edits. Select an income/spending chart month to open its daily ledger.
-- **Export CSV** exports the filtered daily view (all pages), or all records in the 12 months shown in Month totals.
-- **Save data** creates a restorable `savedata.js` backup. **Load data** restores it after confirmation. Existing backups remain supported. CSV is not a restorable backup.
-- **Settings** explains local data storage and provides backup shortcuts. Browser data does not sync across devices.
+- Overview: choose a month, explore bar/area cash flow with a keyboard scrubber, category mosaic/ring and daily spending heatmap; review exact totals, set a budget, open recent activity or card spending, and inspect separate historical workbook payment comparisons.
+- Transactions: daily summaries or monthly totals, combined filters, day sorting, ten-day pages, colored details, add/edit/duplicate/delete with Undo, and CSV export across all matching pages.
+- Cards: separate credit/cash sections, circular/polygon patterns, two-color gradients with HEX/presets/RGB controls, live creation preview, optional spending reveal, 3D flip, calendar, due dates and direct activity filters.
+- Installments: terms 1/3/4/6/10/12/15/18/24/36 months; rates 0/0.59/0.65/0.69/0.74%; live flat-interest math, linked card, first month, paid progress, pinning, edit and detailed breakdown.
+- Categories: editable names, income/expense/both types and arbitrary colors. Renames follow historical entries without changing source amounts.
+- Search: **Ctrl/Cmd K** searches pages, transactions, cards, plans and categories. Right-click days/entries for quick actions. Dropdowns and dialogs support keyboard use.
+- Workspace preferences: local name, comfortable/compact density and fluid/calm motion. System reduced-motion preferences are respected. Financial amounts never animate as fake rolling numbers.
+- Save data creates a portable backup. Load data validates and confirms before replacing the current ledger. CSV is for spreadsheets, not restore.
+- Clear data is explicit and requires typing **CLEAR**. It excludes the old workbook history on subsequent visits, keeps the theme, and leaves the Excel file unchanged. Save a backup first.
+- On phones, the workspace menu and footer Data & settings retain backup/reset access.
+- Welcome / Replay welcome opens an optional photographic introduction with direct page and entry actions. The daily workspace opens immediately; the welcome never replaces or seeds your data.
 
-## Tests
+Workbook rows are daily aggregates, not individual receipts. Card due dates are reminders, not confirmed balances. Installment progress is manual and does not automatically create transaction expenses. Do not double-count purchases and repayments.
 
-No build step or runtime packages are required by the app. Run the data tests with Node:
+## Source map
+
+- `src/main.tsx`, `src/App.tsx` — bootstrap, responsive shell and lazy-loaded pages.
+- `src/pages/` — the five React pages.
+- `src/context.tsx`, `src/lib/model.ts`, `src/types.ts` — typed shared state, compatible storage/backup operations and selectors.
+- `finance-core.js` — retained original integer-cent calculations, transaction IDs, validation, filters and CSV.
+- `src/components/` — controlled forms, Radix dialogs/selects/menus, theme-aware color picker and shadcnspace adaptations.
+- `space.css` + `src/styles.css` + `src/studio.css` — shadcnspace base, React bindings and the current editorial design, readable type scale and motion.
+- `src/components/CashFlowExplorer.tsx`, `SpendingInsights.tsx`, `src/lib/charts.ts` — exact real-data chart exploration, category allocation and spending calendar.
+- `src/components/WelcomePage.tsx`, `Assets/moneywise-welcome.png` — lazy-loaded welcome and original local photograph; see [UI-DIRECTION.md](UI-DIRECTION.md) for design rationale and generation prompt.
+- `Assets/shadcnspace asset/` — preserved downloaded examples; see [ASSET-INTEGRATION.md](ASSET-INTEGRATION.md).
+- `legacy.html` and the original JS/CSS files — retained reference implementation, not part of the production build.
+- [project.md](project.md), [MIGRATION.md](MIGRATION.md) — project history, migration safeguards and validation.
+
+## Verification
+
+Latest interface pass: **32 data/calculation checks** and **26 production-browser scenarios** pass, including new chart/welcome interactions and rich-data layouts down to 320px. Details and the debugging ledger are in [UI-DIRECTION.md](UI-DIRECTION.md) and [project.md](project.md).
 
 ```powershell
-node --test tests/finance-core.test.cjs
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm test:pages
 ```
 
-For the optional end-to-end regression suite, make Playwright available to Node and install Microsoft Edge, then run:
+The original finance-core suite and new typed-model tests verify compatibility. The React browser suite tests **the production build**, all five pages, old/new ledgers, backups, mobile layouts, keyboard controls, themes and GitHub Pages subdirectory paths. It starts a temporary server and uses a disposable browser profile, never your normal browser storage. It requires Microsoft Edge by default; set `PLAYWRIGHT_CHANNEL=chromium` after `pnpm exec playwright install chromium` for another machine. Set `MW_SCREENSHOT_DIR` to an existing directory to save screenshots.
 
-```powershell
-npm install --no-save playwright
-node tests/browser-smoke.cjs
-```
+Windows-only `node tests/preview-startup.cjs` checks the actual parent-project hook command, cold startup, reuse/concurrency and occupied-port safety on temporary ports. It never stops the normal preview.
 
-The browser test starts its own local static server and uses a separate, disposable browser context; it never uses your normal browser profile. `PLAYWRIGHT_CHANNEL` can select another installed Chromium-based browser. `MW_SCREENSHOT_DIR` optionally saves preview screenshots to an existing directory.
+Earlier browser-smoke/real-world/space-ui suites are historical tests for `legacy.html`, not React coverage. The active React suite is `tests/react-pages.cjs`.
 
-## Animated background attribution
+## Asset attribution
 
-The ambient bubble layer uses the downloaded `JS-Animated-Bubbles-Background` asset. Its original JavaScript and GPL-2.0 license are retained in `Assets/JS-Animated-Bubbles-Background-master/`; `bubble-background.css` contains the Moneywise-specific glass-layer integration and readability tuning.
+Keep notices and licenses with the supplied examples. Recasting a downloaded component does not grant a new blanket license. The local brand and landscape SVGs are project-created. Retained bubble/GSAP/ASCII effects are not loaded by the React app; the bubble source retains its GPL-2.0 license. Verify redistribution terms for any retained asset without a license before republishing it.

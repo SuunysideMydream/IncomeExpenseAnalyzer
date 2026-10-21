@@ -81,6 +81,6 @@
       .map(row => row.map(cell).join(',')).join('\r\n');
   }
   const api = {money, localDate, validDate, escape, records, totals, months, monthly, daily, filter, validateTransaction, csv};
+  root.Finance = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
-  else root.Finance = api;
 })(globalThis);

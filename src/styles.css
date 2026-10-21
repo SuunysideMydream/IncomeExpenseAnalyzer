@@ -1,0 +1,443 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "./";
+
+/* React bindings for the supplied shadcnspace designs. The existing color,
+   spacing and typography tokens remain the single visual language. */
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+button,
+input,
+a,
+summary {
+  touch-action: manipulation;
+}
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 65%, transparent);
+  outline-offset: 3px;
+}
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 16px;
+  z-index: 200;
+  background: var(--surface);
+  color: var(--primary);
+  padding: 12px;
+  border-radius: 10px;
+  transform: translateY(-160%);
+}
+.skip-link:focus {
+  transform: none;
+}
+.react-nav-item {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+.react-nav-item > *:not(.react-nav-selection) {
+  position: relative;
+  z-index: 1;
+}
+.react-nav-selection {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--line));
+  background: var(--primary-light);
+  border-radius: 10px;
+  z-index: 0;
+}
+.react-nav-item.active:after {
+  display: none;
+}
+#app {
+  position: relative;
+  outline: none;
+}
+.react-text-roller {
+  display: inline-grid;
+  vertical-align: bottom;
+  min-width: 235px;
+  color: var(--primary);
+  font-weight: 550;
+}
+.react-text-roller > span {
+  grid-area: 1/1;
+}
+.react-orbit > svg {
+  animation: none !important;
+}
+.react-chart {
+  position: relative;
+}
+.react-chart-tooltip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  padding: 10px 13px;
+  background: var(--surface);
+  box-shadow: var(--shadow-popover);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 11px;
+  pointer-events: none;
+}
+.react-chart-tooltip span {
+  color: var(--muted);
+}
+.space-place-top > span:last-child {
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #34264c9e;
+  color: #fff;
+  font-size: 11px;
+}
+.space-place-shade {
+  background: linear-gradient(
+    180deg,
+    #29213b0d 10%,
+    #231a40b8 75%,
+    #231a40ed
+  ) !important;
+}
+.react-menu,
+.react-select-content {
+  z-index: 130;
+  min-width: var(--radix-select-trigger-width, 210px);
+  max-width: calc(100vw - 24px);
+  max-height: min(380px, var(--radix-select-content-available-height, 70vh));
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-popover);
+  overflow: auto;
+  overscroll-behavior: contain;
+  transform-origin: var(
+    --radix-select-content-transform-origin,
+    var(--radix-dropdown-menu-content-transform-origin, center top)
+  );
+  animation: react-pop 0.16s ease-out;
+}
+.react-menu [role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+.react-menu [data-highlighted],
+.react-select-content .ui-option[data-highlighted] {
+  background: var(--primary-light);
+  color: var(--primary);
+  outline: none;
+}
+.react-menu .is-danger {
+  color: var(--negative);
+}
+.react-select-content .ui-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-right: 10px;
+  outline: none;
+  min-height: 40px;
+  font-size: 13px;
+}
+.react-select-content .ui-option:after {
+  display: none;
+}
+.react-select-content .ui-option[data-state="checked"] {
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.react-select-scroll {
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  color: var(--muted);
+}
+.ui-select-trigger > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.react-segmented {
+  isolation: isolate;
+}
+.react-segmented button {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+.react-segmented button > span:not(.react-segment-marker) {
+  position: relative;
+  z-index: 1;
+}
+.react-segment-marker {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 1px 5px #00000010;
+  border: 1px solid var(--line);
+}
+.react-page-item {
+  position: relative;
+  isolation: isolate;
+}
+.react-page-marker {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 9px;
+  background: var(--primary-light);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--line));
+}
+.space-pagination button[aria-current="page"] {
+  background: transparent !important;
+  color: var(--primary);
+}
+.react-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+.react-wallet .space-card-rotator {
+  transition: none;
+}
+.react-wallet .space-card-front {
+  position: absolute;
+  inset: 0;
+}
+.react-backdrop {
+  z-index: 100;
+  opacity: 1;
+  visibility: visible;
+  transition: none;
+  backdrop-filter: blur(7px);
+}
+.react-modal {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+.react-modal:focus {
+  outline: none;
+}
+.react-modal .modal-head h2 {
+  margin: 0;
+}
+.react-modal .modal-head p {
+  margin-bottom: 0;
+}
+.react-modal .form-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.react-modal .field + .field {
+  margin-top: 4px;
+}
+.react-modal .form-grid .field + .field {
+  margin-top: 0;
+}
+.react-modal .modal-error {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.react-modal .card-preview {
+  margin-top: 18px;
+}
+.react-history-data {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+.react-history-data summary {
+  cursor: pointer;
+  padding: 5px 0;
+}
+.react-history-data table {
+  margin-top: 12px;
+}
+.react-history-data td,
+.react-history-data th {
+  white-space: nowrap;
+}
+.react-wave-back {
+  fill: #c0b4f8;
+  opacity: 0.7;
+}
+.react-wave-front {
+  fill: var(--primary);
+}
+.react-splash .space-loader-check {
+  stroke-dasharray: none;
+  stroke-dashoffset: 0;
+  animation: none;
+}
+.react-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+}
+.react-intro .space-splash {
+  z-index: 180;
+}
+.react-intro-close {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  z-index: 181;
+}
+.react-boot-error {
+  max-width: 600px;
+  margin: 15vh auto;
+  padding: 24px;
+  color: var(--ink);
+}
+.react-boot-error p {
+  margin: 16px 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.notice-close {
+  font-size: 20px !important;
+  line-height: 1;
+  padding: 4px !important;
+}
+.space-profile-trigger:focus-visible {
+  outline-color: var(--primary);
+}
+.mode-thumb {
+  display: grid;
+  place-items: center;
+}
+.mode-thumb svg {
+  position: absolute;
+  inset: 0 !important;
+  margin: auto !important;
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+.space-backup-actions button {
+  white-space: nowrap;
+}
+.space-footer .source-note {
+  line-height: 1.7;
+}
+.space-footer .source-note br {
+  display: block;
+}
+.card-insight-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 620px) {
+  .card-insight-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .card-insight-stats > div:first-child {
+    grid-column: 1/-1;
+  }
+}
+.field input[type="color"] {
+  padding: 0;
+  border: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.card-color-swatch {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+@keyframes react-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 620px) {
+  .react-text-roller {
+    min-width: 0;
+    display: block;
+  }
+  .space-welcome p {
+    max-width: 245px;
+  }
+  .react-chart-tooltip {
+    font-size: 10px;
+    max-width: 250px;
+  }
+  .react-modal .detail-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .react-modal .detail-summary > div:first-child {
+    grid-column: 1/-1;
+  }
+  .react-modal .entry-actions {
+    flex-wrap: wrap;
+  }
+  .mode-thumb svg {
+    width: 16px;
+    height: 16px;
+  }
+  .react-card-face .space-card-front {
+    padding: 23px;
+  }
+}
+body[data-motion="reduced"] *,
+body[data-motion="reduced"] *:before,
+body[data-motion="reduced"] *:after {
+  animation: none !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .react-menu,
+  .react-select-content {
+    animation: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .react-backdrop {
+    backdrop-filter: none;
+    background: #171321cc;
+  }
+  .react-menu,
+  .react-select-content {
+    background: var(--surface);
+  }
+}

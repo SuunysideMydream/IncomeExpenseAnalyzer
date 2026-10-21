@@ -3,12 +3,7 @@ function cardBackground(card) {
   return `linear-gradient(0deg,rgba(0,0,0,.28),transparent 85%),linear-gradient(135deg,${start},${end})`;
 }
 function walletCardFace(card,preview=false) {
-  const cash=card.kind==='cash';
-  return `<div ${preview?'id="card-preview"':''} class="credit-card ${cash?'cash-card':''} ${preview?'mini-card':''}" style="background:${cardBackground(card)}">
-    <span class="card-sheen" aria-hidden="true"></span><span class="wallet-type-label" data-preview-kind>${cash?'Cash card':'Credit card'}</span>
-    <div class="card-chip"></div><div class="card-number" data-preview-last4>•••• ${esc(card.last4||'1234')}</div>
-    <div class="card-footer"><div><b data-preview-name>${esc(card.name||'Your card')}</b><span>${esc(preview?'Preview':card.status||'Active')}</span></div>
-    ${preview?'':`<button class="edit-row wallet-edit" data-edit-card="${esc(card.id)}" aria-label="Edit ${esc(card.name)}">Edit</button>`}</div></div>`;
+  return spaceCardFace(card,preview);
 }
 function walletSections() {
   return ['credit','cash'].map(kind=>{
@@ -23,7 +18,7 @@ function walletCardForm(card={}) {
     <div class="field"><label for="name">Card name</label><input id="name" value="${esc(card.name||'')}" placeholder="e.g. My everyday card"></div>
     <div class="field"><label for="last4">Last 4 digits</label><input id="last4" value="${esc(card.last4||'')}" maxlength="4" inputmode="numeric" placeholder="1234"></div>
     <div class="field"><label for="card-kind">Card type</label><select id="card-kind"><option value="credit" ${card.kind!=='cash'?'selected':''}>Credit card</option><option value="cash" ${card.kind==='cash'?'selected':''}>Cash card</option></select></div>
-    <div class="field"><label for="due">Payment due day (optional)</label><input id="due" type="number" min="1" max="31" value="${card.paymentDue?Number(card.paymentDue.slice(8,10)):''}"></div>
+    <div class="field"><label for="due">Payment due day (optional)</label><input id="due" type="number" min="1" max="31" value="${card.dueDay||(card.paymentDue?Number(card.paymentDue.slice(8,10)):'')}"></div>
     <div class="field full"><label for="status">Status</label><select id="status">${['Active','Plan','Completed'].map(value=>`<option ${value===(card.status||'Active')?'selected':''}>${value}</option>`).join('')}</select></div>
     </div><div class="card-preview-wrap"><span>LIVE PREVIEW</span>${walletCardFace(card,true)}</div>
     <div class="gradient-heading"><h4>TWO-COLOR GRADIENT</h4><p>Choose a start and end color to make this card yours.</p></div>
