@@ -1,6 +1,6 @@
 # Moneywise — Project Notes
 
-Last updated: 2026-10-21
+Last updated 2026-11-11
 
 ## Project goal
 
@@ -10,7 +10,7 @@ The application is based on the manually maintained workbook:
 
 `D:\Money Income and Expense Personal\My Income Expense.xlsx`
 
-The long-term goal is to make it easy to record transactions, understand spending patterns, track credit-card usage, plan installment purchases, and review monthly financial health from one calm, readable interface.
+The long-term goal is to make it easy to record transactions, understand spending patterns, track card usage and recurring bills, plan installment purchases, and review monthly financial health from one readable workspace.
 
 The app now supports a fresh personal workspace: **Clear data → optionally download a backup → type CLEAR → confirm**. This removes finance records for this site in this browser and keeps the bundled workbook history excluded on subsequent visits. The source Excel file and repository snapshot are unchanged. Clearing or testing the app does not automatically clear data in the user's normal browser profile.
 
@@ -19,6 +19,7 @@ The app now supports a fresh personal workspace: **Clear data → optionally dow
 ### 1. Monthly overview
 
 - Select a month to review.
+- Review net balance, income, spending, budget usage, and installment commitments directly beneath the month controls. The budget ring follows the selected month's actual spending. The Coming up panel summarizes the next 30 days of expected renewals and card reminders.
 - View income, spending, net balance, and tracked card count.
 - Compare monthly workbook card-payment totals by card, review the highest payment, and explore total or selected-card trends.
 - Browse card-payment months independently from the main overview month; separate workbook payment totals from card-tagged transaction spending.
@@ -28,6 +29,7 @@ The app now supports a fresh personal workspace: **Clear data → optionally dow
 - Set a monthly spending budget, view remaining room, compare spending against the previous month when records exist, and open recent activity details.
 - Review live card-tagged purchases with direct links into filtered transactions. Imported workbook payment history is kept in a separate expandable section.
 - Explore grouped bars or bounded smooth areas for monthly/daily cash flow, with pointer inspection, a keyboard range control, exact totals and period drill-through.
+- Choose **Spending pace** to compare cumulative recorded spending with the previous month through the same day. The chart initially selects today for the current month. A shorter previous month uses its closing total when you move past its last day. The chart shows when comparison history is missing. **View day** opens the selected date's entries.
 - Switch category allocation between a proportional mosaic and segmented ring; use exact amounts to open matching whole records. A local-date spending heatmap opens day details or a new expense for an empty day.
 - Select a summary metric to open the relevant transactions or installment plans.
 
@@ -47,17 +49,19 @@ The app now supports a fresh personal workspace: **Clear data → optionally dow
 
 ### 3. Cards
 
-- Select the wallet month above the card sections. A section with one card shows recorded monthly purchases, daily-volume bars, recent entries and an activity link alongside it. The existing calendar uses the same month.
+- Select the wallet month above the card sections. A section with one card shows recorded monthly purchases, daily-volume bars, recent entries, and an activity link. **Open card calendar** passes the chosen month to Calendar and selects the Cards filter.
 
 - Display tracked cards in separate **Credit cards** and **Cash cards** sections, with counts and add actions. Existing cards default to credit; choose the type in the add/edit form. Credit cards use circular patterns, while cash cards use polygon facets.
 - Choose gradient start and end colors, each with independent HEX input, presets, and RGB sliders. Three-digit HEX values are accepted and expanded. Both colors and the selected card pattern appear in the live preview and remain saved when the card is edited or restored from backup.
 - Store a friendly card name and mock last four digits.
 - Store card status and payment due day.
+- Hover over the card artwork to reveal the back. Touch users can tap the artwork, and keyboard users can focus the card and press Enter. The separate Reveal control shows recorded purchases on the front.
 - Preview the card design before saving.
+- Choose a translucent Mastercard, Visa, UnionPay, or JCB mark in the live preview, or select No network mark. Older cards use the original Mastercard-style mark until edited.
 - Use the themed color controls in either light or dark mode; invalid HEX values prevent saving.
 - View card spending by month.
 - View card spending and payment dates in a calendar layout.
-- Open a card's filtered transaction history from its spending chip. Calendar purchases open day details; calendar ＋ buttons start an expense on that date.
+- Open a card's filtered transaction history from its spending chip. In Calendar, select a date to see purchases or add an expense on that day.
 - View monthly recorded purchase totals, transaction counts, and the number of cards used. These represent logged purchases, not a reconciled bank statement balance.
 - Due days are stored independently and clamp to the last day of shorter months; the overview lists upcoming dates from today.
 
@@ -73,6 +77,8 @@ The app now supports a fresh personal workspace: **Clear data → optionally dow
 - Open a detailed breakdown for each plan.
 - Set a first payment month, link a card, and enter payments already made.
 - Use **Mark month paid** to advance progress; the plan becomes Completed after the last payment. This updates the plan tracker without automatically creating an expense.
+- In **Plan appearance**, choose an outline glyph from Tech, Home, Travel, or Lifestyle. Older emoji selections display as their matching glyphs.
+- Import, replace, or remove a JPEG, PNG, or WebP cover. Use the zoom slider and drag the preview or use its arrow keys to reframe the photo. The editor and saved card use the same aspect ratio. The browser saves a bounded JPEG and the zoom and position values.
 
 ### 5. Categories
 
@@ -84,15 +90,31 @@ The app now supports a fresh personal workspace: **Clear data → optionally dow
 - Renaming preserves existing transaction category displays through a saved alias map; duplicate category names are rejected.
 - See each category's entry count and income/spending amount for the selected overview month. Category color editing now uses the themed HEX/preset/RGB control.
 
-### 6. Visual experience
+### 6. Calendar
 
-- Complete shadcnspace-based redesign: a sticky two-row top bar replaces the sidebar, with clear active navigation and a horizontally scrollable mobile nav row.
+- Switch between a full month and a chronological agenda. Filter to transactions, renewals, or card activity. Select a date or an agenda event to open its day drawer.
+- The drawer keeps gross expenses, income, and net cash flow visible while you browse Activity, Cards, and Renewals. Card entries show recorded day and month purchases, masked digits, and any reminder on that date. The drawer links to the corresponding editors and can start an expense or a subscription for the selected date.
+- Recorded income and spending have their own totals. Expected renewals have a separate forecast, card due dates appear as reminders, and installment estimates appear by month because the plan records a month instead of a due day.
+- On a focused date, use arrows to move by days or weeks, Home and End for the week, and Page Up or Page Down for months. Enter opens the drawer and Escape returns focus to the calendar. On phones, event markers keep the grid readable and the drawer uses the available width.
+
+### 7. Subscriptions
+
+- Add a name, amount, first charge date, frequency, category, and optional payment method or note. Edit, pause, or archive a schedule from the tracker.
+- Weekly, monthly, quarterly, and yearly forecasts use the first charge as the anchor. A schedule anchored on the 31st moves to the last day of a short month and returns to the 31st where available.
+- Review the interactive 30-day forecast. From a renewal, record an expense, link an existing local expense, or skip the occurrence. A skipped occurrence can be restored. The original amount and date of a linked expense remain authoritative for the ledger.
+- Enter an optional website in the subscription or installment editor to reuse its icon in Calendar, details, and search. Lookups send the hostname to Icon Horse and save a small PNG locally. A failed lookup keeps the fallback and offers a retry. [Icon Horse](https://icon.horse/)
+- Month and agenda views follow patterns from Monarch and Rocket Money. Confirmation, linking, and skipping follow the scheduled-entry workflow in Actual Budget. [Monarch recurring calendar](https://help.monarch.com/hc/en-us/articles/4890751141908-Tracking-Recurring-Expenses-and-Bills) · [Rocket Money recurring views](https://help.rocketmoney.com/en/articles/3117398-where-can-i-view-my-subscriptions-and-bills) · [Actual Budget schedules](https://actualbudget.org/docs/schedules/)
+
+### 8. Visual experience
+
+- A persistent desktop rail groups ledger views and management tools. On mobile, a compact header and scrollable tabs keep the active page in reach. Bookmarkable routes work with browser Back and Forward.
+- Self-hosted Inter pairs a larger type scale with clear supporting labels. Directional page springs, a moving navigation highlight, and a budget marker respond to actual navigation and values. Calm mode and system reduced motion simplify these effects.
+- A localized violet and mint background drifts behind the workspace and follows a fine pointer through two springs. The theme switch uses a short reveal anchored at the switch when the browser supports View Transitions. The Calendar drawer enters and exits on the same edge. [Apple Designing Fluid Interfaces](https://developer.apple.com/videos/play/wwdc2018/803/) · [Wix Studio loop animation](https://support.wix.com/en/article/studio-editor-adding-a-loop-animation)
 - A cohesive light/dark palette, violet accents, restrained translucent header, solid readable panels, larger amounts, and stronger supporting-text contrast.
 - React/TypeScript adaptation of every supplied component family; see `ASSET-INTEGRATION.md` for the source-to-feature map. Original downloads remain intact; adapted TSX components are compiled by Vite.
-- Global search (Ctrl/Cmd K) across pages, transaction notes/dates/categories, cards, and installment plans.
-- Liquid-wave welcome that dismisses when data is ready; explicit replay does not alter data.
-- Rotating overview copy and circular quick-add text, separate from actual financial amounts.
-- Landscape budget card, daily/monthly cash-flow chart with exact totals, category donut, recent activity, and event-style payment reminders.
+- Global search (Ctrl/Cmd K) groups pages and records and adds shortcuts for income, expenses, and today's Calendar. Arrow keys move through results while focus stays in the search field. A card match scrolls to the correct wallet card after that page loads. [beUI Command Palette](https://beui.dev/components/blocks/command-palette)
+- The compact Overview pairs large amounts with a pointer-responsive contour background and an adjacent budget gauge. The effect uses local CSS and Motion and stays still in Calm mode. [Refero finance layouts](https://styles.refero.design/style/367c0c6e-73a7-441c-a8ff-91d139ac60dc) · [Scroll Shaders contour references](https://scrollshaders.com/) · [60fps finance motion](https://60fps.design/shots/revolut-card-ready-animation)
+- An optional photographic welcome opens from the rail or workspace settings and links directly to the main workflows.
 - 3D wallet flips, purchase visibility controls, gold chip artwork, and circular/polygon patterns; hidden faces are inert for keyboard users.
 - Product-style installment cards with saved pins, progress, edit/details, and manual payment actions.
 - Numbered daily pagination and keyboard-accessible context menus for day/transaction actions.
@@ -106,21 +128,22 @@ The app now supports a fresh personal workspace: **Clear data → optionally dow
 The active application is now **React + TypeScript + Vite**. It still deploys as a static website; there is no API/database/authentication service.
 
 - `index.html` / `src/main.tsx` — React entry, local snapshot loading and startup error handling.
-- `src/App.tsx` — responsive topbar, theme, save/load/clear actions, global navigation and lazy-loaded pages.
-- `src/pages/` — Overview, Transactions, Cards, Installments and Categories.
+- `src/App.tsx` — responsive rail and topbar, theme, save/load/clear actions, global navigation, and lazy-loaded pages.
+- `src/pages/` — Overview, Transactions, Calendar, Cards, Subscriptions, Installments, and Categories.
 - `src/context.tsx` / `src/lib/model.ts` / `src/types.ts` — typed shared store, compatible selectors, storage operations, backup validation and rollback.
+- `src/lib/recurring.ts` / `src/lib/calendar.ts` / `src/lib/routes.ts` — recurrence math, calendar events, and hash routes.
 - `finance-core.js` — original integer-cent math, stable transaction identities, validation, filters and CSV; shared with the original tests.
 - `src/components/Dialogs.tsx` — controlled React forms and detail/search/reminder/settings dialogs.
 - `src/components/ui/` — themed Radix selects/menus/dialog support and shared controls.
 - `src/components/shadcnspace/` — genuine React adaptations of the supplied card, text, splash and pagination components.
-- `space.css` + `src/styles.css` + `src/studio.css` — preserved shadcnspace foundation, React bindings, and current editorial layout/typography/theme refinements.
+- `space.css`, `src/styles.css`, `src/studio.css`, and `src/workbench.css` — shadcnspace foundation, React bindings, editorial design, and responsive workbench refinements.
 - `src/components/CashFlowExplorer.tsx`, `SpendingInsights.tsx`, `Reveal.tsx` and `src/lib/charts.ts` — interactive real-data charts, proportional allocations, daily heatmap and motion boundaries.
 - `src/components/WelcomePage.tsx` / `Assets/moneywise-welcome.png` — optional photographic welcome with real workspace totals and direct page/entry actions. It is lazy-loaded and never gates startup; open Welcome on desktop or Replay welcome in the footer.
 - `data.json` — unchanged published workbook snapshot, bundled as a local build asset.
 - `Assets/shadcnspace asset/` — preserved original examples; see `ASSET-INTEGRATION.md`.
 - `Start-Preview.ps1` / `Start-Preview.cmd` — hidden loopback-only Vite launcher with identity/runtime checks and concurrent-start protection.
 - `.github/workflows/pages.yml` — lockfile installation, data tests, build, production browser tests and Pages deployment for future authorized pushes.
-- `tests/model.test.ts` / `tests/charts.test.ts` / `tests/react-pages.cjs` — typed compatibility, financial visualization and production React workflow checks.
+- `tests/model.test.ts` / `tests/charts.test.ts` / `tests/recurring.test.ts` / `tests/react-pages.cjs` — compatibility, financial visualization, recurrence math, and production workflows.
 - `legacy.html` and the original JS/CSS files — retained reference implementation; not included in the production build.
 
 Downloaded bubble/GSAP/ASCII effects and earlier CSS layers remain on disk. They are not loaded by the active React shell.
@@ -129,7 +152,7 @@ User-created changes are stored in browser `localStorage` using these keys:
 
 - `mw-tx` — added transactions.
 - `mw-tx-overrides` — edits and deletion markers for imported daily records; the published snapshot is never modified by these actions.
-- `mw-cards` — added credit cards.
+- `mw-cards` — added credit and cash cards.
 - `mw-plans` — added installment plans.
 - `mw-category-meta` — category names, types, and colors.
 - `mw-card-overrides` — edits to imported card records.
@@ -138,18 +161,55 @@ User-created changes are stored in browser `localStorage` using these keys:
 - `mw-workspace` — workspace mode (`workbook` or `fresh`), fresh-start timestamp, profile name, reading density, motion preference, and pinned installment IDs; included in backups so restoring a fresh ledger does not revive workbook records.
 - `mw-budgets` — spending limit keyed by month.
 - `mw-category-aliases` — persistent category rename mappings used when displaying and exporting earlier records.
+- `mw-subscriptions` — optional recurring plans, their statuses, and skipped dates. A recorded renewal link is part of its transaction in `mw-tx`.
 
 The application does not currently write changes back to the source Excel workbook.
 
-For local Windows development, double-click `Start-Preview.cmd`. It starts the server from the repository folder and checks `http://localhost:8766/`. Run it again after a restart or if the preview server exits. `Start-Preview.ps1` uses installed Node.js or the bundled Codex Node runtime and starts the local Vite CLI. Run `pnpm install --frozen-lockfile` once before launching. Python cannot serve the uncompiled React source. The launcher does not publish the app to GitHub Pages.
+For local Windows development, double-click `Start-Preview.cmd` to start or reuse the preview at `http://localhost:8766/`. `Start-Preview.ps1` uses installed Node.js or the bundled Codex Node runtime and starts the local Vite CLI. Run `pnpm install --frozen-lockfile` once before launching. The **Moneywise Local Preview** shortcut, installed by `Set-PreviewStartup.ps1`, runs the same quiet launcher at Windows sign-in. Run the installer with `-Remove` to disable startup for this account.
 
 Use the header's **Save data** control to export these user changes as a portable `savedata.js` backup. **Load data** imports that file after confirmation and replaces the browser's current saved changes. The backup is a strict data-only JavaScript wrapper; the app parses it as text and never executes the imported file. When supported, the browser save picker lets the user choose the destination; otherwise it downloads to the browser's configured download folder.
 
-New exports use the v2 data-only JavaScript wrapper and include workspace mode, budgets, category aliases, and transaction overrides. V1 backups still import, defaulting to workbook mode when workspace settings are absent. The format bump prevents older app versions from silently ignoring the fresh-start setting. Import checks the wrapper against the payload version, validates values before writing, and attempts rollback if storage fails. CSV is intended for spreadsheets, not backup restoration. Data & settings explains this distinction and provides backup and clear-data controls.
+Exports use the v2 data-only JavaScript wrapper and include workspace mode, budgets, category aliases, transaction overrides, and subscriptions. Earlier v1 and v2 backups restore with an empty tracker if the subscription key is absent. V1 defaults to workbook mode if workspace settings are absent. Import checks the wrapper against the payload version, validates before writing, and attempts rollback if storage fails. Use CSV for spreadsheets and Save data for restorable backups.
 
 Imported transaction IDs use the source date plus its occurrence on that date. Local legacy entries receive index-based IDs that are persisted before mutation. Keep the source snapshot stable: changing the ordering of multiple source rows on the same date requires an explicit ID migration.
 
 ## Completed issues and solutions
+
+### Overview and search took extra steps
+
+The separate overview heading and tall budget illustration pushed the charts down the page. Month controls now share the heading, and the budget gauge sits beside the balance. The new pace view compares equal elapsed periods using the ledger's existing daily totals. Wallet search now hands the target card to the Cards page, so the scroll happens after the card renders even on the first visit.
+
+### Card clipping and browser-styled inputs
+
+The card back was fixed to the face aspect ratio, and the magnetic stripe, margins, details, and actions exceeded that height. At 320 px, the action row extended 45 px beyond the clipped face. The back now lays out its details and actions together and gives narrow cards enough height for both controls.
+
+Date and month popups now use the same light and dark tokens as the editor. They support keyboard grid navigation and return focus to the field's trigger. The due-day and paid-count arrows use themed buttons, and the search box and color editors use the app's surfaces and focus styles. [Radix Popover](https://www.radix-ui.com/primitives/docs/components/popover) · [WAI-ARIA date-picker interaction](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/examples/datepicker-dialog/)
+
+Card marks, plan emoji, and cover photos are optional fields in the existing card and plan records. Plan progress preserves artwork, and Save data includes it alongside the other ledger values. Cover import resizes images in the browser and accepts local raster photo files.
+
+### Wallet rows and sliding highlights
+
+At 768 px, the wallet list had 200 px of content in a 140 px scroll area. The third row's bounds extended beneath the activity link while the row itself was clipped. All three rows now fit in the normal flow. The moving selection highlight also intercepted an adjacent Calendar tab at mid-transition. The shared selection marker now sits behind every label and ignores pointer input.
+
+### Local preview readiness on 2026-11-09
+
+**Summary.** Localhost was unreachable when port 8766 had no listener. The launcher restarted Vite on the same port, then reported a false failure during its runtime check. The fix on `main` makes startup wait for the Vite client to become ready.
+
+**Symptom.** Requests to `localhost:8766` and `127.0.0.1:8766` timed out. The launcher then reported `Port 8766 is not serving the Vite development runtime` while the new Node process was listening. Follow-up requests returned HTTP 200 for the page and JavaScript for `/@vite/client`. The reason the original listener stopped is unknown.
+
+**Root cause.** `Test-MoneywisePreview` accepted the Moneywise HTML, then classified every exception from its two-second `/@vite/client` probe as an incompatible server. A temporary delay in serving the module could therefore fail the Codex hook even after Vite had bound the correct port. Earlier startup coverage checked immediate readiness and unrelated occupied ports. It lacked a response that first timed out and then succeeded.
+
+**Fix.** `Start-Preview.ps1` checks for a loopback listener before launching. Once the port is open, it verifies the HTML and Vite runtime, retrying transient runtime failures within a 35-second readiness window. It rejects conflicting servers and keeps the existing mutex and detached Windows launch.
+
+**Validation.** `node tests/preview-startup.cjs` delays the first runtime response past the probe timeout and checks that a later JavaScript response succeeds. The same suite verifies a real cold Vite start, quiet exit, reuse, simultaneous invocations, and unrelated-port refusal. The live preview at `http://localhost:8766/` returned HTTP 200.
+
+### Workbench layout at narrow widths
+
+The new Overview placed card spending beside recent activity. The original full-width card row reserved more column space than its new panel provided and overflowed at tablet widths. The row now fits the name and amount on one line and gives the spending bar its own line. The budget ring and its marker share the same spring value so the marker follows the end of the arc. The production browser suite checks both layout and marker placement.
+
+### Wallet actions during a card flip
+
+During the 3D rotation, Edge sometimes delivered a click to the rotating surface even when `elementFromPoint` returned the back-face button. The wallet now unlocks a face's controls after applying the final rotation. The browser suite checks the transform at the moment the back becomes interactive and then opens the card's filtered activity. Focused checks also covered rapid reversals and reduced motion.
 
 ### Issue: Equal visual weight and basic charts made the workspace harder to scan
 
@@ -414,15 +474,15 @@ Recommended next step:
 
 ### Search and settings scope
 
-Header search and Ctrl/Cmd K open global page/transaction/card/plan/category search. A transaction result opens the selected day in the ledger. Workspace preferences provide a local name, comfortable/compact density, and fluid/calm motion. Data & settings provides data summary and save/load/clear controls; the footer retains this access on mobile. These are local preferences, not account authentication.
+Header search and Ctrl/Cmd K search pages, transactions, cards, subscriptions, plans, and categories. A transaction result opens the selected day in the ledger. Workspace preferences provide a local name, comfortable or compact density, and fluid or calm motion. Data & settings provides a data summary and save, load, and clear controls. The footer retains this access on mobile.
 
 ### Other workflows still need a dedicated pass
 
 - Category renaming now resolves through a saved alias map; a future Excel re-export would need to apply that map to source cells.
 - Card due-day reminders support short months, but full statement cycles, bank statement import, outstanding balances, and repayment reconciliation are still future work.
-- There is no reconciliation, bank feed, recurring-entry scheduler, or multi-device sync.
+- Subscription schedules are local forecasts. You confirm each charge before it becomes an expense. Bank feeds, reconciliation, and multi-device sync are outside the current workspace.
 - Installment progress is manual and separate from transaction entries; first-month schedules are planning information rather than proof of payment.
-- Transaction, card, plan, category, budget, and reset writes use snapshot/rollback handling, but browser storage remains subject to clearing and available space.
+- Transaction, card, plan, category, subscription, budget, and reset writes use snapshot and rollback handling. Browser storage remains subject to clearing and available space.
 
 ### Static hosting now requires a build
 
@@ -439,6 +499,37 @@ Before distributing a future proprietary or differently licensed version, replac
 The supplied ASCII Glitch Ripple folder does not contain a separate license or attribution file. Confirm its source and distribution terms before publishing the repository. It is retained as a reference and is not loaded by the current shell.
 
 ## Validation completed
+
+### 2026-11-11 Overview and command palette
+
+- The production build and **48 data checks** passed. Spending pace reconciles recorded amounts, leap-month dates, shorter-month comparisons, and missing history.
+- **35 production-browser scenarios** covered all seven pages, saved data, and backup compatibility. Added checks for exact day comparison and drill-through at 320 px, keyboard focus in the command palette, and opening a wallet card before its page has loaded. The nested menu check waits for the menu to close and verifies that the day dialog stays open.
+- Checked the updated Overview and palette in both themes. A separate live preview check verified touch scrubbing at 320 px and that system reduced motion disables the contour movement.
+
+### 2026-11-10 cover framing, glyphs, and website icons
+
+- The production build and **46 data checks** passed. Plan progress and backup restore preserve cover framing and saved icons. Existing emoji selections map to glyphs.
+- **33 browser scenarios** passed. The suite checked drag and keyboard cover framing, hover and keyboard flipping, touchscreen taps, and favicon reuse in Calendar, forecasts, and search. A separate local browser check fetched the actual YouTube icon and verified that the saved cover and icon reopened without a second lookup.
+
+### 2026-11-10 card and installment appearance
+
+- The production build and **45 data checks** passed. Backup round-trip and installment progress preserve the network, emoji, and cover fields.
+- **31 browser scenarios** passed. The wallet actions fit and remain clickable at 320 px. The date and month pickers work inside the editor with arrow keys and nested Escape. The photo workflow verifies file type, resizing, preview before save, reload, and removal independently per plan.
+- Inspected light and dark previews for the themed controls and the photo editor. The normal preview responds at `http://localhost:8766/`.
+
+### 2026-11-10 Windows sign-in and interface motion
+
+- Windows lists **Moneywise Local Preview** in the current user's Startup folder. Its shortcut points to the quiet launcher in this repository. The launcher and its cold-start, reuse, readiness, and port-ownership tests passed. Live localhost and Vite runtime returned HTTP 200. The Windows sign-in event itself was outside this verification.
+- `pnpm test` passed **44 data and calculation checks**. Strict TypeScript and the production build passed.
+- `pnpm test:pages` passed **29 browser scenarios**. Tests cover exact day totals, drawer keyboard focus and date navigation, per-card and renewal details, the 320 px drawer, pointer-driven ambience, reduced motion, and unclipped wallet rows at tablet width. Synthetic browser profiles verified that opening and inspecting the drawer leaves ledger storage intact.
+
+### 2026-11-09 workbench and preview readiness
+
+- `pnpm test` passed **44 data and calculation checks**, including short months, leap years, preserved renewal history, duplicate prevention, and existing backup formats.
+- `pnpm build` passed strict TypeScript and the production Vite build. The self-hosted Inter font and all seven lazy-loaded pages resolve under the GitHub Pages subpath.
+- `pnpm test:pages` passed **28 production-browser scenarios**. Coverage includes Calendar keyboard navigation and browser history, subscription recording and linking, skip and restore, theme and reduced motion, existing CRUD and backups, and rich layouts at 320, 390, and 768 px.
+- `node tests/preview-startup.cjs` passed with a delayed Vite response, real cold start, reuse, concurrent launches, and unrelated-port refusal. The normal preview remains at `http://localhost:8766/`.
+- Browser tests used disposable profiles with sample data. Checked screenshots include light and dark Overview, the Cards wallet, desktop and phone Calendar, and Subscriptions.
 
 ### 2026-10-21 editorial UI and interactive visualization refinement
 
@@ -512,6 +603,6 @@ The supplied ASCII Glitch Ripple folder does not contain a separate license or a
 
 1. Add bank statement import, statement periods, and repayment reconciliation to Cards.
 2. Add optional category budgets alongside the existing monthly budget.
-3. Add recurring transactions with explicit confirmation before posting.
+3. Extend the confirmed subscription workflow to recurring income and other repeating entries.
 4. Link actual installment payments to transaction entries without double-counting.
 5. Decide whether the project will remain a local/GitHub Pages tool or become a synchronized multi-device application.

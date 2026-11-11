@@ -5,7 +5,7 @@ import { useApp } from "../context";
 import { baht2, nextMonth, planProgress, safeColor } from "../lib/finance";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
-import type { CSSVars } from "../types";
+import { PlanArtwork } from "../components/PlanArtwork";
 export default function Installments() {
   const { model, state, store, open, notify, calm } = useApp(),
     pins = new Set(state.workspace.pinnedPlans || []),
@@ -77,17 +77,7 @@ export default function Installments() {
                 transition={{ type: "spring", bounce: 0, duration: 0.35 }}
               >
                 <Card className="plan-card">
-                  <div
-                    className="space-product-art"
-                    style={{ "--product-color": color } as CSSVars}
-                  >
-                    <div className="space-product-ring" />
-                    <motion.span
-                      className="space-product-icon"
-                      whileHover={calm ? undefined : { rotate: 0, y: -3 }}
-                    >
-                      <ShoppingBag />
-                    </motion.span>
+                  <PlanArtwork color={color} plan={plan}>
                     <span className={`pill ${plan.status.toLowerCase()}`}>
                       {plan.status}
                     </span>
@@ -111,7 +101,7 @@ export default function Installments() {
                     <div className="space-product-tag">
                       {plan.months} MONTH PLAN
                     </div>
-                  </div>
+                  </PlanArtwork>
                   <CardContent className="space-product-content">
                     <span className="space-product-category">
                       {card?.name || "Personal installment"}

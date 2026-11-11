@@ -181,9 +181,9 @@ summary:focus-visible,
 .react-segmented {
   isolation: isolate;
 }
-.react-segmented button {
+.react-segmented > button {
   position: relative;
-  isolation: isolate;
+  z-index: auto;
   background: transparent !important;
   border-color: transparent !important;
 }
@@ -195,6 +195,7 @@ summary:focus-visible,
   position: absolute;
   inset: 0;
   z-index: -1;
+  pointer-events: none;
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 1px 5px #00000010;

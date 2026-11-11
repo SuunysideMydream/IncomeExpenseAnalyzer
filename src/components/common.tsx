@@ -6,10 +6,12 @@ export function MonthPicker({
   value,
   onChange,
   label = "Month",
+  extra = [],
 }: {
   value: string;
   onChange: (value: string) => void;
   label?: string;
+  extra?: string[];
 }) {
   const { model } = useApp();
   return (
@@ -17,7 +19,7 @@ export function MonthPicker({
       label={label}
       value={value}
       onChange={onChange}
-      options={[...new Set([...model.months, value])]
+      options={[...new Set([...model.months, ...extra, value])]
         .sort()
         .reverse()
         .map((month) => ({ value: month, label: monthText(month) }))}

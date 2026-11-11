@@ -1,0 +1,691 @@
+/* Ledger controls share one border, focus, and surface treatment. */
+.field input[type="number"] {
+  appearance: textfield;
+}
+.field input[type="number"]::-webkit-inner-spin-button,
+.field input[type="number"]::-webkit-outer-spin-button,
+.themed-search-field input::-webkit-search-cancel-button {
+  appearance: none;
+  margin: 0;
+}
+.date-picker-field,
+.number-field,
+.themed-search-field {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--surface);
+  color: var(--ink);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+:is(.date-picker-field, .number-field, .themed-search-field):focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.date-picker-field:has(input[aria-invalid="true"]) {
+  border-color: var(--negative);
+}
+.field .date-picker-field > input,
+.field .number-field > input,
+.themed-search-field > input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+  box-shadow: none;
+}
+.field .date-picker-field > input,
+.field .number-field > input {
+  min-height: 2.65rem;
+  padding: 0.62rem 0.7rem;
+}
+.date-picker-field > button,
+.number-field-steps > button,
+.themed-search-field > button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.43rem;
+  background: transparent;
+  color: var(--muted);
+}
+.date-picker-field > button:hover,
+.number-field-steps > button:not(:disabled):hover,
+.themed-search-field > button:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.date-picker-field > button {
+  width: 2.25rem;
+  height: 2.15rem;
+  margin-inline-end: 0.22rem;
+}
+.number-field-steps {
+  display: grid;
+  gap: 1px;
+  margin-inline: 0.16rem 0.3rem;
+  padding-inline-start: 0.23rem;
+  border-inline-start: 1px solid var(--line);
+}
+.number-field-steps > button {
+  width: 1.92rem;
+  height: 1.27rem;
+}
+.ledger-search {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+}
+.themed-search-field {
+  gap: 0.56rem;
+  padding-inline: 0.72rem 0.36rem;
+}
+.themed-search-field > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.themed-search-field > input {
+  appearance: none;
+  font-size: 0.82rem;
+  padding: 0.63rem 0;
+}
+.themed-search-field > input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.themed-search-field > button {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+.subscription-library-head .themed-search-field {
+  width: min(13rem, 100%);
+}
+body:has(.react-backdrop[data-state="open"]) #ledger-notice {
+  z-index: 98;
+}
+@media (max-width: 430px) {
+  .form-grid > .field:has(.date-picker-field) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Day and month pickers use the same themed popover in every editor. */
+.date-picker-popover {
+  z-index: 145;
+  width: min(19.5rem, calc(100vw - 1.25rem));
+  max-height: var(--radix-popover-content-available-height, 85dvh);
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-popover);
+  overflow: auto;
+  overscroll-behavior: contain;
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: react-pop 160ms ease-out;
+}
+.date-picker-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.52rem;
+}
+.date-picker-arrow,
+.date-picker-period,
+.date-picker-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  border: 1px solid transparent;
+  border-radius: 0.53rem;
+  padding: 0.2rem;
+  background: transparent;
+  color: var(--ink);
+}
+.date-picker-arrow {
+  width: 2.06rem;
+  height: 2.06rem;
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+.date-picker-period {
+  min-height: 2.05rem;
+  font-size: 0.84rem;
+  font-weight: 660;
+}
+.date-picker-grid {
+  display: grid;
+  gap: 0.13rem;
+}
+.date-picker-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.13rem;
+}
+.month-grid .date-picker-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.date-picker-week {
+  margin-bottom: 0.18rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+  text-align: center;
+}
+.date-picker-cell {
+  width: 100%;
+  min-height: 2.08rem;
+  font-size: 0.76rem;
+  font-weight: 540;
+  font-variant-numeric: tabular-nums;
+}
+.date-picker-cell.is-adjacent {
+  color: var(--muted);
+  opacity: 0.68;
+}
+.date-picker-cell[aria-current="date"] {
+  border-color: var(--line);
+  color: var(--primary);
+  font-weight: 720;
+}
+.date-picker-arrow:not(:disabled):hover,
+button.date-picker-period:hover,
+.date-picker-cell:not(:disabled):hover,
+.date-picker-grid [aria-selected="true"] > .date-picker-cell {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.date-picker-grid [aria-selected="true"] > .date-picker-cell {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
+  opacity: 1;
+  font-weight: 720;
+}
+.date-picker-popover button:focus-visible {
+  outline-offset: -2px;
+}
+.date-picker-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.54rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--line);
+}
+.date-picker-footer > button {
+  min-height: 2.05rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.73rem;
+}
+
+/* Color editing stays inside Moneywise in both themes. */
+.react-modal .card-color-editor {
+  gap: 0.76rem;
+  padding: 0.85rem;
+  border-radius: 0.85rem;
+  background: var(--surface-soft);
+}
+.react-modal .card-color-top {
+  align-items: end;
+  gap: 0.68rem;
+}
+.react-modal .card-color-swatch {
+  display: block;
+  width: 2.62rem;
+  height: 2.62rem;
+  flex: 0 0 2.62rem;
+  border-radius: 0.62rem;
+  box-shadow: inset 0 0 0 1px #ffffff40;
+  cursor: default;
+}
+.react-modal .card-hex-field input {
+  width: 100%;
+  min-height: 2.62rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.63rem;
+  background: var(--surface);
+  color: var(--ink);
+  appearance: none;
+  font-size: 0.83rem;
+  font-weight: 620;
+  font-variant-numeric: tabular-nums;
+}
+.react-modal .card-hex-field input[aria-invalid="true"] {
+  border-color: var(--negative);
+}
+.card-color-adjust > summary,
+.plan-glyph-picker > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  padding: 0.42rem 0.54rem;
+  border: 1px solid var(--line);
+  border-radius: 0.62rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 610;
+  cursor: pointer;
+  list-style: none;
+}
+.card-color-adjust > summary::-webkit-details-marker,
+.plan-glyph-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.card-color-adjust > summary > svg:first-child,
+.plan-glyph-picker > summary > svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+.card-color-adjust > summary > svg:last-child {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+  color: var(--muted);
+  transition: transform 140ms ease;
+}
+.card-color-adjust[open] > summary > svg:last-child {
+  transform: rotate(180deg);
+}
+.card-color-adjust .card-color-channel {
+  grid-template-columns: 2.55rem minmax(0, 1fr) 1.65rem;
+  gap: 0.34rem;
+}
+.card-color-channel output {
+  font-variant-numeric: tabular-nums;
+}
+.card-color-channel input[type="range"] {
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  height: 0.58rem;
+  margin: 0.4rem 0;
+  border-radius: 10rem;
+  background: var(--channel-track);
+}
+.card-color-channel input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.card-color-channel input[type="range"]::-moz-range-thumb {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+/* Keep actions inside the card face at the narrowest wallet widths. */
+.react-wallet {
+  perspective: none;
+}
+.wallet-card-stage {
+  position: relative;
+  perspective: 1200px;
+  touch-action: manipulation;
+}
+.wallet-keyboard-toggle {
+  position: absolute;
+  z-index: 5;
+  inset: 0.65rem auto auto 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.62rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.72rem;
+  opacity: 0;
+  pointer-events: none;
+}
+.wallet-keyboard-toggle:focus-visible {
+  opacity: 1;
+}
+.wallet-flip-hint > span + span {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wallet-flip-hint > span:first-child {
+    display: none;
+  }
+  .wallet-flip-hint > span + span {
+    display: inline;
+  }
+}
+.react-wallet .space-card-rotator {
+  inline-size: 100%;
+  min-block-size: 12rem;
+}
+.react-wallet .space-card-back {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(0.67rem, 1.5vw, 1.08rem) 0 0.72rem;
+}
+.react-wallet .space-magnetic-strip {
+  flex: 0 0 1.25rem;
+  margin-bottom: 0.54rem;
+}
+.react-wallet .space-card-back-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.24rem;
+  min-height: 0;
+  padding-inline: clamp(0.85rem, 1.85vw, 1.32rem);
+}
+.react-wallet .space-card-back-content > span,
+.react-wallet .space-card-back-content h4 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.react-wallet .space-card-back-content h4 {
+  margin: 0;
+  font-size: clamp(1.23rem, 2.4vw, 1.72rem);
+  line-height: 1.15;
+}
+.react-wallet .space-card-back-content p {
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+.react-wallet .space-card-back-meta {
+  margin: 0.15rem 0 0.2rem;
+  gap: 0.4rem;
+  font-size: 0.61rem;
+}
+.react-wallet .space-card-back-actions {
+  flex-wrap: wrap;
+  gap: 0.36rem;
+  margin-top: auto;
+}
+.react-wallet .space-card-back-actions > button {
+  min-height: 1.94rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.69rem;
+}
+.react-wallet .space-card-back-actions > button:hover {
+  background: #ffffff34;
+}
+.card-network-mark {
+  width: clamp(2.85rem, 5.5vw, 3.65rem);
+  height: 1.45rem;
+  flex-shrink: 0;
+  color: #fff;
+  opacity: 0.55;
+}
+
+/* Plan covers use the same composition in the editor and the plan board. */
+.plan-card .space-product-art,
+.plan-art-preview {
+  aspect-ratio: 11 / 5;
+  height: auto;
+}
+.plan-cover-image,
+.plan-cover-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.plan-cover-image {
+  z-index: -2;
+  object-fit: cover;
+  object-position: var(--cover-x, 50%) var(--cover-y, 50%);
+  transform: scale(var(--cover-zoom, 1));
+  transform-origin: var(--cover-x, 50%) var(--cover-y, 50%);
+}
+.plan-cover-scrim {
+  z-index: -1;
+  background: linear-gradient(180deg, #140e23a0, #170e2824 38%, #160e259c);
+}
+.has-plan-cover.space-product-art::before,
+.has-plan-cover.space-product-art::after {
+  display: none;
+}
+.has-plan-cover .space-product-icon {
+  color: #fff;
+  background: #2a2347a8;
+  border: 1px solid #ffffff46;
+  backdrop-filter: blur(12px);
+}
+.has-plan-cover .space-product-tag {
+  color: #fff;
+}
+.space-product-icon .record-site-icon {
+  width: 57%;
+  height: 57%;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .has-plan-cover .space-product-icon {
+    background: #2a2347;
+    backdrop-filter: none;
+  }
+}
+.plan-appearance-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: 0.85rem;
+}
+.plan-art-preview {
+  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 0.8rem;
+}
+.plan-cover-viewport {
+  border-radius: 0.8rem;
+}
+.plan-cover-viewport.can-frame {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.plan-cover-viewport.is-dragging {
+  cursor: grabbing;
+}
+.plan-frame-controls {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.72rem;
+  background: var(--surface-soft);
+}
+.plan-frame-controls > label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+.plan-frame-controls output {
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.plan-frame-controls > input {
+  width: 100%;
+  accent-color: var(--primary);
+}
+.plan-frame-controls > .ledger-hint {
+  margin: 0;
+}
+.plan-frame-controls > .link-button {
+  justify-self: start;
+  min-height: 1.9rem;
+  padding: 0.25rem 0;
+  font-size: 0.72rem;
+}
+.plan-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+.plan-cover-actions button {
+  min-height: 2.2rem;
+  padding: 0.42rem 0.62rem;
+  font-size: 0.72rem;
+}
+.plan-appearance-controls > .ledger-hint {
+  margin: 0.42rem 0 0.65rem;
+}
+.plan-glyph-picker > summary > span {
+  margin-inline-start: auto;
+}
+.plan-glyph-groups {
+  display: grid;
+  gap: 0.62rem;
+  margin: 0.7rem 0 0.35rem;
+}
+.plan-glyph-groups h5 {
+  margin: 0 0 0.28rem;
+  font-size: 0.72rem;
+  font-weight: 620;
+  color: var(--muted);
+}
+.plan-glyph-groups [role="group"] > div {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.24rem;
+}
+.plan-glyph-groups button {
+  display: grid;
+  place-items: center;
+  min-height: 2.15rem;
+  padding: 0.12rem;
+  border: 1px solid var(--line);
+  border-radius: 0.53rem;
+  background: var(--surface);
+  color: var(--muted);
+}
+.plan-glyph-groups button:hover,
+.plan-glyph-groups button[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.plan-glyph-picker > .link-button {
+  min-height: 2rem;
+  padding: 0.32rem 0;
+  font-size: 0.72rem;
+}
+@media (max-width: 620px) {
+  .plan-appearance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.record-site-icon {
+  display: block;
+  flex: none;
+  object-fit: contain;
+  border-radius: 0.2rem;
+  pointer-events: none;
+}
+.record-reference-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.4rem;
+}
+.record-reference-name > svg {
+  color: var(--primary);
+  flex: none;
+}
+.record-reference-name > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.site-icon-field {
+  margin-top: 0.85rem;
+}
+.site-icon-field > label > span {
+  color: var(--muted);
+  font-weight: 450;
+}
+.site-icon-input {
+  min-width: 0;
+  min-height: 2.65rem;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: var(--surface);
+}
+.site-icon-input:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.site-icon-swatch {
+  flex: 0 0 2rem;
+  height: 2rem;
+  margin-inline-start: 0.28rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.52rem;
+  background: var(--surface-soft);
+  color: var(--primary);
+}
+.site-icon-field .site-icon-input > input {
+  min-width: 0;
+  flex: 1;
+  min-height: 2.6rem;
+  padding: 0.45rem 0.52rem;
+  background: transparent;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+.site-icon-input > button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-inline-end: 0.27rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.42rem;
+  background: transparent;
+  color: var(--muted);
+}
+.site-icon-input > button:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.site-icon-hint {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.site-icon-field .site-icon-retry {
+  min-height: 1.85rem;
+  padding: 0.3rem 0;
+  font-size: 0.7rem;
+}
+.planner-chip > .record-site-icon {
+  width: 0.68rem;
+  height: 0.68rem;
+}

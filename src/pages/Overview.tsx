@@ -1,12 +1,15 @@
-import { motion } from "motion/react";
+import { useEffect } from "react";
+import { motion, useSpring, useTransform } from "motion/react";
 import {
   ArrowDownLeft,
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
-  Bell,
   Calendar,
+  CreditCard,
+  Home,
   Plus,
+  Repeat2,
   ShoppingBag,
   Timer,
   Wallet,
@@ -21,7 +24,6 @@ import {
   signedMoney,
 } from "../lib/finance";
 import type { CSSVars, Transaction } from "../types";
-import landscape from "../../Assets/moneywise-landscape.svg";
 import { MonthPicker, SectionHeading } from "../components/common";
 import { PaymentHistory } from "../components/PaymentHistory";
 import { CashFlowExplorer } from "../components/CashFlowExplorer";
@@ -30,8 +32,20 @@ import {
   SpendingCalendar,
 } from "../components/SpendingInsights";
 import { Reveal } from "../components/Reveal";
+import { RecordIcon } from "../components/RecordIcon";
+import { addDays, dateText } from "../lib/recurring";
 export default function Overview() {
-  const { model, month, setMonth, open, navigate, setFilters, calm } = useApp(),
+  const {
+      model,
+      state,
+      month,
+      setMonth,
+      open,
+      navigate,
+      setFilters,
+      setTxMode,
+      calm,
+    } = useApp(),
     rows = model.transactions.filter((row) => row.date.startsWith(month)),
     sum = Finance.totals(rows),
     previous = nextMonth(month, -1),
@@ -44,16 +58,30 @@ export default function Overview() {
       .at(-1),
     active = model.plans.filter((plan) => plan.status === "Ongoing"),
     days = Finance.daily(rows);
+  const lightX = useSpring(0, { stiffness: 110, damping: 24 }),
+    lightY = useSpring(0, { stiffness: 110, damping: 24 });
   const commitment = active.reduce((total, plan) => total + plan.monthly, 0),
     stats = [
+      {
+        label: "Net balance",
+        value: signedMoney(sum.net),
+        tone: "violet",
+        Icon: Wallet,
+        sub: "Income minus recorded spending",
+        action: () => {
+          navigate("transactions");
+          setTxMode("day");
+          setFilters(EMPTY_FILTERS);
+        },
+      },
       {
         label: "Total income",
         value: baht2(sum.income),
         tone: "mint",
         Icon: ArrowDownLeft,
-        sub: "Money recorded this month",
         action: () => {
           navigate("transactions");
+          setTxMode("day");
           setFilters({ ...EMPTY_FILTERS, type: "income" });
         },
       },
@@ -63,43 +91,44 @@ export default function Overview() {
         tone: "coral",
         Icon: ArrowUpRight,
         sub: previousRows.length
-          ? `${signedMoney(sum.expense - Finance.totals(previousRows).expense)} vs ${monthText(previous)}`
-          : "Across your recorded expenses",
+          ? `${signedMoney(sum.expense - Finance.totals(previousRows).expense)} vs all of ${monthText(previous)}`
+          : undefined,
         action: () => {
           navigate("transactions");
+          setTxMode("day");
           setFilters({ ...EMPTY_FILTERS, type: "expense" });
         },
-      },
-      {
-        label: "Net balance",
-        value: signedMoney(sum.net),
-        tone: "violet",
-        Icon: Wallet,
-        sub: "Income minus recorded spending",
-        action: () => {
-          navigate("transactions");
-          setFilters(EMPTY_FILTERS);
-        },
-      },
-      {
-        label: "Installments / month",
-        value: baht2(commitment),
-        tone: "amber",
-        Icon: Timer,
-        sub: `${active.length} active plans · tracked separately`,
-        action: () => navigate("installments"),
       },
     ];
   return (
     <>
-      <div className="toolbar space-overview-toolbar">
+      <header className="space-page-heading overview-heading">
         <div>
-          <h2>Monthly overview</h2>
-          <p className="period">
-            {last
-              ? `Your latest entry · ${last}`
-              : "Ready when you are. Start with your first entry."}
-          </p>
+          <div className="space-breadcrumb">
+            <Home aria-hidden="true" />
+            <span>{state.workspace.profile?.name || "My workspace"}</span>
+          </div>
+          <h1 id="page-title">
+            Overview<span className="studio-title-dot">.</span>
+          </h1>
+          {last && (
+            <div className="overview-latest">
+              <span>
+                Latest entry ·{" "}
+                <time dateTime={last}>
+                  {dateText(last)}, {last.slice(0, 4)}
+                </time>
+              </span>
+              {!last.startsWith(month) && (
+                <button
+                  className="link-button latest-month-link"
+                  onClick={() => setMonth(last.slice(0, 7))}
+                >
+                  Jump to month <ArrowRight size={13} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="month-navigation">
           <button
@@ -128,39 +157,85 @@ export default function Overview() {
             <Plus size={16} /> Add transaction
           </button>
         </div>
+      </header>
+      <div
+        className="workbench-overview-hero"
+        onPointerMove={
+          calm
+            ? undefined
+            : (event) => {
+                if (event.pointerType !== "mouse") return;
+                const rect = event.currentTarget.getBoundingClientRect();
+                lightX.set(
+                  ((event.clientX - rect.left) / rect.width - 0.5) * 56,
+                );
+                lightY.set(
+                  ((event.clientY - rect.top) / rect.height - 0.5) * 28,
+                );
+              }
+        }
+        onPointerLeave={() => {
+          lightX.set(0);
+          lightY.set(0);
+        }}
+      >
+        <motion.div
+          className="overview-contours"
+          aria-hidden="true"
+          style={calm ? undefined : { x: lightX, y: lightY }}
+        />
+        <section
+          className="workbench-hero-financials"
+          aria-label="Recorded monthly overview"
+        >
+          <div className="kpis">
+            {stats.map(({ label, value, tone, Icon, sub, action }) => (
+              <button
+                type="button"
+                className="card kpi studio-stat"
+                key={label}
+                data-tone={tone}
+                onClick={action}
+                aria-label={`${label}: ${value}. View details`}
+              >
+                <div className="kpi-label">
+                  <span>{label}</span>
+                  <span className={`space-tile ${tone}`}>
+                    <Icon />
+                  </span>
+                </div>
+                <div
+                  className={`kpi-value ${tone === "mint" ? "positive" : tone === "coral" || (tone === "violet" && sum.net < 0) ? "negative" : ""}`}
+                >
+                  {value}
+                </div>
+                {sub && <div className="kpi-sub">{sub}</div>}
+                <ArrowUpRight className="studio-stat-arrow" size={16} />
+              </button>
+            ))}
+          </div>
+        </section>
+        <div className="overview-commitments">
+          <BudgetCard expense={sum.expense} />
+          <button
+            type="button"
+            className="overview-installments"
+            onClick={() => navigate("installments")}
+            aria-label={`Installments / month: ${baht2(commitment)}. View details`}
+          >
+            <Timer size={17} />
+            <span>
+              <b>Installments / month</b>
+              <small>
+                {active.length} active {active.length === 1 ? "plan" : "plans"}
+              </small>
+            </span>
+            <strong>{baht2(commitment)}</strong>
+            <ArrowUpRight size={14} />
+          </button>
+        </div>
       </div>
       <SetupChecklist />
-      <div className="kpis">
-        {stats.map(({ label, value, tone, Icon, sub, action }, index) => (
-          <motion.button
-            type="button"
-            className="card kpi studio-stat"
-            key={label}
-            onClick={action}
-            aria-label={`${label}: ${value}. View details`}
-            initial={calm ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: calm ? 0 : 0.3,
-              delay: calm ? 0 : index * 0.035,
-            }}
-          >
-            <div className="kpi-label">
-              <span>{label}</span>
-              <span className={`space-tile ${tone}`}>
-                <Icon />
-              </span>
-            </div>
-            <div
-              className={`kpi-value ${tone === "mint" ? "positive" : tone === "coral" ? "negative" : ""}`}
-            >
-              {value}
-            </div>
-            <div className="kpi-sub">{sub}</div>
-            <ArrowUpRight className="studio-stat-arrow" size={17} />
-          </motion.button>
-        ))}
-      </div>
       <Reveal
         className="space-overview-grid studio-flow-layout"
         id="overview-cashflow"
@@ -168,7 +243,7 @@ export default function Overview() {
         <section className="studio-panel space-flow-card">
           <CashFlowExplorer />
         </section>
-        <BudgetCard expense={sum.expense} />
+        <ForecastPanel />
       </Reveal>
       <Reveal className="studio-section-label">
         <span>SPENDING, IN PERSPECTIVE</span>
@@ -189,9 +264,6 @@ export default function Overview() {
         id="overview-activity"
       >
         <RecentActivity rows={rows} />
-        <DueDateCards />
-      </Reveal>
-      <Reveal id="overview-cards">
         <LiveCardSpending />
       </Reveal>
       <section className="card month-facts">
@@ -285,77 +357,115 @@ function BudgetCard({ expense }: { expense: number }) {
     remaining = budget - expense,
     percent = budget ? (expense / budget) * 100 : 0;
   return (
-    <motion.section
-      className="space-place-card"
-      aria-label="Monthly spending budget"
-      whileHover={calm ? undefined : { y: -2 }}
-      transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-    >
-      <img className="space-place-image" src={landscape} alt="" />
-      <div className="space-place-shade" />
-      <div className="space-place-top">
-        <span className="space-glass-badge">
-          <Wallet /> Monthly budget
-        </span>
-        <span>{monthText(month)}</span>
-      </div>
-      <div className="space-place-bottom">
-        <span className="space-place-eyebrow">
-          {budget
-            ? remaining < 0
-              ? "A moment to rebalance"
-              : "A little room to breathe"
-            : "Make room for what matters"}
-        </span>
-        <div className="space-place-amount">
-          {budget ? signedMoney(remaining) : baht2(expense)}
-        </div>
-        <p>
-          {budget
-            ? remaining < 0
-              ? "over your monthly budget"
-              : "left in your monthly budget"
-            : "recorded spending · set a budget to guide the month"}
-        </p>
-        <div
-          className="budget-track"
-          role="progressbar"
-          aria-label="Monthly budget used"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.min(100, Math.round(percent))}
-        >
-          <motion.i
-            animate={{ width: `${Math.min(100, percent)}%` }}
-            transition={
-              calm
-                ? { duration: 0 }
-                : { type: "spring", bounce: 0, duration: 0.4 }
-            }
-          />
-        </div>
-        <div className="space-place-meta">
-          <span>
-            {budget ? `${Math.round(percent)}% used` : "Your pace, your plan"}
-          </span>
-          <span>
-            {budget
-              ? `${baht2(expense)} of ${baht2(budget)}`
-              : "Start with a comfortable limit"}
-          </span>
-        </div>
+    <section className="workbench-budget" aria-label="Monthly spending budget">
+      <div className="overview-budget-head">
+        <h2>Monthly budget</h2>
         <button
-          className="space-white-button"
+          type="button"
+          className="overview-budget-action"
           onClick={() => open({ kind: "budget" })}
         >
-          {budget ? "Edit budget" : "Set budget"} <ArrowRight size={14} />
+          {budget ? "Edit budget" : "Set budget"} <ArrowUpRight size={13} />
         </button>
       </div>
-    </motion.section>
+      <div className="overview-budget-body">
+        <div>
+          <p>
+            {budget
+              ? remaining < 0
+                ? "Over budget"
+                : "Available to spend"
+              : "Recorded spending"}
+          </p>
+          <strong className={remaining < 0 && budget ? "negative" : undefined}>
+            {baht2(budget ? remaining : expense)}
+          </strong>
+          <small>
+            {budget
+              ? `${baht2(expense)} of ${baht2(budget)} used`
+              : "No budget set for this month"}
+          </small>
+        </div>
+        <BudgetOrbit percent={percent} hasBudget={budget > 0} calm={calm} />
+      </div>
+    </section>
+  );
+}
+function BudgetOrbit({
+  percent,
+  hasBudget,
+  calm,
+}: {
+  percent: number;
+  hasBudget: boolean;
+  calm: boolean;
+}) {
+  const ratio = Math.min(1, Math.max(0, percent / 100));
+  const progress = useSpring(calm ? ratio : 0, { stiffness: 210, damping: 29 });
+  useEffect(() => {
+    if (calm) progress.jump(ratio);
+    else progress.set(ratio);
+  }, [ratio, calm, progress]);
+  const radius = 91,
+    circumference = radius * 2 * Math.PI;
+  const x = (value: number) => 110 + radius * Math.sin(value * 2 * Math.PI);
+  const y = (value: number) => 110 - radius * Math.cos(value * 2 * Math.PI);
+  const offset = useTransform(progress, (value) => (1 - value) * circumference);
+  const pipX = useTransform(progress, x),
+    pipY = useTransform(progress, y);
+  return (
+    <div
+      className="budget-orbit"
+      role={hasBudget ? "progressbar" : undefined}
+      aria-label={hasBudget ? "Monthly budget used" : undefined}
+      aria-valuemin={hasBudget ? 0 : undefined}
+      aria-valuemax={hasBudget ? 100 : undefined}
+      aria-valuenow={hasBudget ? Math.round(ratio * 100) : undefined}
+      aria-valuetext={
+        hasBudget ? `${Math.round(percent)}% of budget used` : undefined
+      }
+    >
+      <svg viewBox="0 0 220 220" aria-hidden="true">
+        <circle cx="110" cy="110" r="104" className="budget-orbit-outer" />
+        <circle cx="110" cy="110" r="91" className="budget-orbit-track" />
+        <circle cx="110" cy="110" r="77" className="budget-orbit-inner" />
+        {hasBudget && (
+          <>
+            <motion.circle
+              cx="110"
+              cy="110"
+              r="91"
+              strokeDasharray={`${circumference} ${circumference}`}
+              transform="rotate(-90 110 110)"
+              className={`budget-orbit-fill ${percent > 100 ? "over" : ""}`}
+              style={{
+                strokeDashoffset: calm ? (1 - ratio) * circumference : offset,
+              }}
+            />
+            <motion.circle
+              cx={calm ? x(ratio) : pipX}
+              cy={calm ? y(ratio) : pipY}
+              r="8"
+              className="budget-orbit-halo"
+            />
+            <motion.circle
+              cx={calm ? x(ratio) : pipX}
+              cy={calm ? y(ratio) : pipY}
+              r="4"
+              className="budget-orbit-pip"
+            />
+          </>
+        )}
+      </svg>
+      <div className="budget-orbit-value" aria-hidden="true">
+        <strong>{hasBudget ? `${Math.round(percent)}%` : "—"}</strong>
+        {hasBudget && <span>used</span>}
+      </div>
+    </div>
   );
 }
 function RecentActivity({ rows }: { rows: Transaction[] }) {
-  const { model, open, navigate } = useApp(),
+  const { model, open, openMonth, month } = useApp(),
     recent = rows
       .filter((row) => row.income || row.expense)
       .sort((a, b) => b.date.localeCompare(a.date))
@@ -366,10 +476,7 @@ function RecentActivity({ rows }: { rows: Transaction[] }) {
         title="Recent activity"
         description="The latest entries in your selected month."
         action={
-          <button
-            className="link-button"
-            onClick={() => navigate("transactions")}
-          >
+          <button className="link-button" onClick={() => openMonth(month)}>
             All transactions <ArrowRight size={14} />
           </button>
         }
@@ -457,6 +564,7 @@ function LiveCardSpending() {
           .expense,
       }))
       .sort((a, b) => b.spent - a.spent),
+    cardsUsed = ranked.filter((card) => card.spent > 0).length,
     max = ranked[0]?.spent || 1;
   return (
     <section className="card personal-card-insights">
@@ -472,7 +580,7 @@ function LiveCardSpending() {
       <div className="personal-highlight">
         {baht2(sum.expense)}
         <small>
-          across {ranked.filter((card) => card.spent > 0).length} cards
+          across {cardsUsed} {cardsUsed === 1 ? "card" : "cards"}
         </small>
       </div>
       {ranked.length ? (
@@ -509,76 +617,118 @@ function LiveCardSpending() {
     </section>
   );
 }
-function DueDateCards() {
-  const { model, navigate, calm } = useApp(),
-    dues = model.upcoming().slice(0, 3);
+function ForecastPanel() {
+  const { model, openCalendar, navigate, calm } = useApp();
+  const today = Finance.localDate(),
+    end = addDays(today, 29);
+  const renewals = model.renewals.upcoming(today);
+  const expected = Finance.money(
+    renewals.reduce((sum, item) => sum + item.subscription.amount, 0),
+  );
+  const entries = [
+    ...renewals.map(({ date, subscription }) => ({
+      id: `${subscription.id}:${date}`,
+      date,
+      name: subscription.name,
+      kind: "renewals" as const,
+      amount: subscription.amount,
+      siteIcon: subscription.siteIcon,
+    })),
+    ...model
+      .upcoming(today)
+      .filter((card) => card.date <= end)
+      .map((card) => ({
+        id: card.id,
+        date: card.date,
+        name: card.name,
+        kind: "cards" as const,
+        amount: null,
+      })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
   return (
-    <section className="card space-events">
-      <SectionHeading
-        title="Upcoming reminders"
-        description="Upcoming reminders, from today."
-        action={
-          <span className="space-soft-badge">
-            <Calendar size={13} /> Planned
-          </span>
-        }
-      />
-      {dues.length ? (
-        dues.map((card, index) => {
-          const date = new Date(`${card.date}T12:00:00`);
-          return (
-            <motion.article
-              className="space-event-row"
-              key={card.id}
-              initial={calm ? false : { opacity: 0, y: 6 }}
+    <section
+      className="workbench-forecast"
+      aria-label="Upcoming renewals and card reminders"
+    >
+      <div className="forecast-top">
+        <span className="forecast-icon">
+          <Calendar size={20} />
+        </span>
+        <span className="studio-eyebrow">NEXT 30 DAYS</span>
+        <button
+          className="link-button forecast-today"
+          onClick={() => openCalendar()}
+          aria-label="Open calendar for today"
+        >
+          Today <ArrowUpRight size={14} />
+        </button>
+      </div>
+      <h3>Coming up</h3>
+      <p>Renewals and card payment dates.</p>
+      <div className="forecast-total">
+        <strong>{baht2(expected)}</strong>
+        <span>expected subscription charges</span>
+      </div>
+      {entries.length ? (
+        <div className="forecast-entries">
+          {entries.slice(0, 5).map((entry, index) => (
+            <motion.button
+              key={entry.id}
+              className="forecast-event"
+              initial={calm ? false : { opacity: 0.6, y: 5 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{
-                type: "spring",
-                bounce: 0,
-                duration: 0.35,
-                delay: calm ? 0 : index * 0.04,
+                duration: calm ? 0 : 0.2,
+                delay: calm ? 0 : index * 0.025,
               }}
+              onClick={() => openCalendar(entry.date, entry.kind)}
             >
-              <div className="space-event-date">
-                <span>
-                  {date.toLocaleDateString("en-US", { month: "short" })}
-                </span>
-                <b>{date.getDate()}</b>
-              </div>
-              <div>
-                <span className="space-event-kind">
-                  {card.kind === "cash" ? "Cash card" : "Credit card"}
-                </span>
-                <h4>{card.name}</h4>
-                <p>Payment due reminder</p>
-              </div>
-              <button
-                className="space-text-icon"
-                aria-label={`View ${card.name}`}
-                onClick={() => {
-                  navigate("cards");
-                  requestAnimationFrame(() =>
-                    document
-                      .getElementById(`wallet-${card.id}`)
-                      ?.scrollIntoView({ block: "center" }),
-                  );
-                }}
-              >
-                <ArrowRight />
-              </button>
-            </motion.article>
-          );
-        })
+              <span className={`forecast-dot ${entry.kind}`}>
+                {entry.kind === "renewals" ? (
+                  <RecordIcon
+                    site={entry.siteIcon}
+                    size={17}
+                    fallback={<Repeat2 size={15} />}
+                  />
+                ) : (
+                  <CreditCard size={15} />
+                )}
+              </span>
+              <span>
+                <b>{entry.name}</b>
+                <small>
+                  {dateText(entry.date)} ·{" "}
+                  {entry.kind === "cards"
+                    ? "Card reminder"
+                    : "Expected renewal"}
+                </small>
+              </span>
+              {entry.amount !== null ? (
+                <strong>{baht2(entry.amount)}</strong>
+              ) : (
+                <ArrowRight size={15} />
+              )}
+            </motion.button>
+          ))}
+        </div>
       ) : (
-        <div className="space-empty-note">
-          No due dates on the horizon. Add a payment day to a card to see it
-          here.
+        <div className="forecast-empty">
+          <p>No dates coming up. Add a subscription to see renewals here.</p>
+          <button
+            className="link-button"
+            onClick={() => navigate("subscriptions")}
+          >
+            Track subscriptions <ArrowRight size={15} />
+          </button>
         </div>
       )}
-      <p className="space-small-note">
-        <Bell /> A reminder, not a confirmed statement balance.
-      </p>
+      <button
+        className="secondary forecast-calendar"
+        onClick={() => openCalendar(entries[0]?.date || today)}
+      >
+        Open calendar <ArrowRight size={16} />
+      </button>
     </section>
   );
 }

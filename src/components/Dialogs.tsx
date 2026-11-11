@@ -1,6 +1,5 @@
 import {
   Fragment,
-  useEffect,
   useRef,
   useState,
   type FormEvent,
@@ -12,7 +11,7 @@ import {
   ArrowRight,
   Bell,
   CreditCard,
-  Search,
+  Repeat2,
   ShieldCheck,
   Wallet,
   X,
@@ -27,29 +26,57 @@ import {
   normalizeColor,
   planProgress,
   RATES,
+  safeColor,
   signedMoney,
   TERMS,
 } from "../lib/finance";
 import type {
   Card,
+  BillingCadence,
   CategoryMeta,
   DialogState,
   Plan,
+  Subscription,
+  SubscriptionStatus,
   Transaction,
   TransactionType,
   View,
 } from "../types";
+import {
+  addDays,
+  CADENCES,
+  dateText,
+  monthlyEquivalent,
+} from "../lib/recurring";
 import { saveBackup } from "../lib/files";
 import { ColorPicker } from "./ColorPicker";
 import { Select } from "./ui/select";
 import { ContextMenu } from "./ui/menus";
 import { CardPreview } from "./shadcnspace/WalletCard";
+import { CalendarDetails } from "./CalendarDetails";
+import { PlanAppearance, type PlanAppearanceState } from "./PlanAppearance";
+import { PlanIcon, RecordIcon } from "./RecordIcon";
+import { SiteIconField, useSiteIcon } from "./SiteIconField";
+import { DatePicker } from "./ui/date-picker";
+import { NumberField } from "./ui/number-field";
+import { CommandPalette } from "./CommandPalette";
+import {
+  CARD_NETWORKS,
+  glyphForPlan,
+  isCardNetwork,
+  isCoverFrame,
+  isPlanCover,
+} from "../lib/appearance";
 const labels: Record<DialogState["kind"], [string, string]> = {
   transaction: [
     "Add transaction",
     "Record spending or income. Your summaries update immediately.",
   ],
   day: ["Day details", "Every recorded transaction for this date."],
+  calendarDay: [
+    "Day details",
+    "Recorded totals, card activity, and subscription renewals.",
+  ],
   card: ["Add card", "Choose credit or cash, and make it yours."],
   plan: [
     "Add installment plan",
@@ -60,6 +87,14 @@ const labels: Record<DialogState["kind"], [string, string]> = {
     "A clear breakdown of your purchase plan.",
   ],
   category: ["Create category", "Choose its type and display color."],
+  subscription: [
+    "Add subscription",
+    "Set up a recurring bill, membership, or service.",
+  ],
+  renewal: [
+    "Review renewal",
+    "Check the schedule, then record or link a charge when it happens.",
+  ],
   budget: [
     "Monthly spending budget",
     "Give your recorded spending a comfortable limit.",
@@ -74,8 +109,8 @@ const labels: Record<DialogState["kind"], [string, string]> = {
     "A few details for your local workspace.",
   ],
   search: [
-    "Find your way",
-    "Search transactions, cards, plans, and categories.",
+    "Search Moneywise",
+    "Find a record, open a page, or start an entry.",
   ],
   reminders: ["Your reminders", "Useful nudges from your own ledger."],
 };
@@ -83,10 +118,15 @@ export function Dialogs() {
   const { dialog, close, calm } = useApp();
   const returnFocus = useRef<HTMLElement | null>(null);
   const Presence = calm ? Fragment : AnimatePresence;
+  const drawer = dialog?.kind === "calendarDay";
+  const search = dialog?.kind === "search";
   let title = dialog ? labels[dialog.kind][0] : "";
+  if (dialog?.kind === "calendarDay") title = dateText(dialog.date, "long");
   if (dialog?.kind === "card" && dialog.card) title = "Edit card";
   if (dialog?.kind === "plan" && dialog.plan) title = "Edit installment plan";
   if (dialog?.kind === "category" && dialog.name) title = "Edit category";
+  if (dialog?.kind === "subscription" && dialog.subscription)
+    title = "Edit subscription";
   if (dialog?.kind === "transaction")
     title = dialog.row
       ? dialog.duplicate
@@ -95,16 +135,22 @@ export function Dialogs() {
       : dialog.type
         ? `Add ${dialog.type}`
         : "Add transaction";
+  if (dialog?.kind === "transaction" && dialog.renewal)
+    title = "Record renewal charge";
   const key =
     dialog?.kind === "transaction"
-      ? `transaction-${dialog.row?.id || "new"}-${dialog.duplicate}`
+      ? `transaction-${dialog.row?.id || dialog.renewal?.subscriptionId || "new"}-${dialog.duplicate}`
       : dialog?.kind === "card"
         ? `card-${dialog.card?.id || "new"}`
         : dialog?.kind === "plan"
           ? `plan-${dialog.plan?.id || "new"}`
           : dialog?.kind === "category"
             ? `category-${dialog.name || "new"}`
-            : dialog?.kind || "closed";
+            : dialog?.kind === "subscription"
+              ? `subscription-${dialog.subscription?.id || "new"}`
+              : dialog?.kind === "renewal"
+                ? `renewal-${dialog.subscriptionId}-${dialog.date}`
+                : dialog?.kind || "closed";
   return (
     <Primitive.Root
       open={Boolean(dialog)}
@@ -117,7 +163,7 @@ export function Dialogs() {
           <Primitive.Portal forceMount>
             <Primitive.Overlay forceMount asChild>
               <motion.div
-                className="modal-backdrop is-open react-backdrop"
+                className={`modal-backdrop is-open react-backdrop${drawer ? " calendar-drawer-backdrop" : ""}`}
                 initial={calm ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -126,23 +172,44 @@ export function Dialogs() {
                 <Primitive.Content
                   forceMount
                   asChild
-                  onOpenAutoFocus={() => {
+                  onOpenAutoFocus={(event) => {
                     returnFocus.current = document.activeElement as HTMLElement;
+                    if (search) {
+                      event.preventDefault();
+                      document.getElementById("space-command-query")?.focus();
+                    }
                   }}
                   onCloseAutoFocus={(event) => {
                     event.preventDefault();
-                    const target = returnFocus.current?.isConnected
-                      ? returnFocus.current
+                    const previous = returnFocus.current;
+                    const target = previous?.isConnected
+                      ? previous.closest("[inert]")
+                        ? previous
+                            .closest("[data-space-card]")
+                            ?.querySelector<HTMLElement>(
+                              ".wallet-keyboard-toggle",
+                            )
+                        : previous
                       : document.querySelector<HTMLElement>(".nav-item.active");
                     target?.focus();
                   }}
                 >
                   <motion.div
-                    className="modal react-modal"
-                    initial={calm ? false : { opacity: 0, y: 12, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className={`modal react-modal${drawer ? " calendar-drawer" : ""}${search ? " command-palette" : ""}`}
+                    initial={
+                      calm
+                        ? false
+                        : drawer
+                          ? { opacity: 0.8, x: "105%" }
+                          : { opacity: 0, y: 12, scale: 0.98 }
+                    }
+                    animate={{ opacity: 1, x: "0%", y: 0, scale: 1 }}
                     exit={
-                      calm ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.99 }
+                      calm
+                        ? { opacity: 0 }
+                        : drawer
+                          ? { opacity: 0.8, x: "105%" }
+                          : { opacity: 0, y: 8, scale: 0.99 }
                     }
                     transition={
                       calm
@@ -152,6 +219,11 @@ export function Dialogs() {
                   >
                     <div className="modal-head">
                       <div>
+                        {drawer && (
+                          <span className="studio-eyebrow">
+                            CALENDAR / DAY DETAILS
+                          </span>
+                        )}
                         <Primitive.Title>{title}</Primitive.Title>
                         <Primitive.Description>
                           {labels[dialog.kind][1]}
@@ -164,7 +236,10 @@ export function Dialogs() {
                         <X size={18} />
                       </Primitive.Close>
                     </div>
-                    <div key={key}>
+                    <div
+                      key={key}
+                      className={drawer ? "calendar-drawer-body" : undefined}
+                    >
                       <DialogBody dialog={dialog} />
                     </div>
                   </motion.div>
@@ -183,6 +258,8 @@ function DialogBody({ dialog }: { dialog: DialogState }) {
       return <TransactionForm dialog={dialog} />;
     case "day":
       return <DayDetails date={dialog.date} filtered={dialog.filtered} />;
+    case "calendarDay":
+      return <CalendarDetails details={dialog} />;
     case "card":
       return <CardForm card={dialog.card} kind={dialog.cardKind} />;
     case "plan":
@@ -191,6 +268,15 @@ function DialogBody({ dialog }: { dialog: DialogState }) {
       return <PlanDetails plan={dialog.plan} />;
     case "category":
       return <CategoryForm original={dialog.name} />;
+    case "subscription":
+      return (
+        <SubscriptionForm
+          subscription={dialog.subscription}
+          date={dialog.date}
+        />
+      );
+    case "renewal":
+      return <RenewalDetails id={dialog.subscriptionId} date={dialog.date} />;
     case "budget":
       return <BudgetForm />;
     case "settings":
@@ -200,7 +286,7 @@ function DialogBody({ dialog }: { dialog: DialogState }) {
     case "preferences":
       return <PreferencesForm />;
     case "search":
-      return <GlobalSearch />;
+      return <CommandPalette />;
     case "reminders":
       return <Reminders />;
   }
@@ -227,10 +313,12 @@ function Form({
   children,
   save,
   label = "Save",
+  pending,
 }: {
   children: ReactNode;
   save: () => void;
   label?: string;
+  pending?: string;
 }) {
   const { close } = useApp(),
     [error, setError] = useState("");
@@ -238,6 +326,7 @@ function Form({
     <form
       onSubmit={(event: FormEvent) => {
         event.preventDefault();
+        if (pending) return;
         try {
           save();
           close();
@@ -263,8 +352,9 @@ function Form({
         <button
           className={`primary save-modal ${label === "Clear all data" ? "danger-button" : ""}`}
           type="submit"
+          disabled={Boolean(pending)}
         >
-          {label}
+          {pending || label}
         </button>
       </div>
     </form>
@@ -277,6 +367,15 @@ function TransactionForm({
 }) {
   const { model, store, transactionSaved, notify } = useApp(),
     row = dialog.row;
+  const renewal = dialog.renewal
+    ? model.renewals.get(
+        dialog.renewal.subscriptionId,
+        dialog.renewal.scheduledFor,
+      )
+    : undefined;
+  const lockedExpense = Boolean(
+    dialog.renewal || (row?.renewal && !dialog.duplicate),
+  );
   const aggregate = Boolean(
     row &&
     (row.source === "workbook" ||
@@ -284,13 +383,19 @@ function TransactionForm({
       (row.income && row.expense)),
   );
   const [date, setDate] = useState(
-      row?.date || dialog.date || Finance.localDate(),
+      row?.date ||
+        dialog.date ||
+        (renewal && renewal.date < Finance.localDate()
+          ? renewal.date
+          : Finance.localDate()),
     ),
     [type, setType] = useState<TransactionType>(
-      dialog.type || (row?.income && !row.expense ? "income" : "expense"),
+      lockedExpense
+        ? "expense"
+        : dialog.type || (row?.income && !row.expense ? "income" : "expense"),
     );
   const [amount, setAmount] = useState(
-      String(row?.income || row?.expense || ""),
+      String(row?.income || row?.expense || renewal?.subscription.amount || ""),
     ),
     [income, setIncome] = useState(String(row?.income || 0)),
     [expense, setExpense] = useState(String(row?.expense || 0));
@@ -299,10 +404,13 @@ function TransactionForm({
         Object.keys(row?.categories || {}).find(
           (name) => row?.categories[name],
         ) ||
+        renewal?.subscription.category ||
         "",
     ),
-    [card, setCard] = useState(row?.card || dialog.card || ""),
-    [note, setNote] = useState(row?.note || "");
+    [card, setCard] = useState(
+      row?.card || dialog.card || renewal?.subscription.card || "",
+    ),
+    [note, setNote] = useState(row?.note || renewal?.subscription.name || "");
   const allocationsList = [
     ...new Set([
       ...Object.keys(row?.categories || {}),
@@ -325,6 +433,7 @@ function TransactionForm({
   );
   return (
     <Form
+      label={dialog.renewal ? "Record expense" : "Save"}
       save={() => {
         const categories: Record<string, number> = {};
         let inValue = 0,
@@ -356,12 +465,17 @@ function TransactionForm({
             category: aggregate ? "" : category,
             card,
             note: note.trim(),
+            renewal: dialog.renewal,
           },
           row?.id,
           dialog.duplicate,
         );
         transactionSaved(saved.date);
-        notify("Transaction saved.");
+        notify(
+          dialog.renewal
+            ? "Renewal recorded in Transactions."
+            : "Transaction saved.",
+        );
       }}
     >
       <div
@@ -369,13 +483,19 @@ function TransactionForm({
         data-transaction-form
         data-aggregate={aggregate}
       >
+        {renewal && (
+          <p className="preview-box renewal-prefill">
+            <Repeat2 size={16} /> Scheduled {dateText(renewal.date)} · enter the
+            date and amount actually charged.
+          </p>
+        )}
         <div className="form-grid">
           <Field label="Date" id="date">
-            <input
+            <DatePicker
               id="date"
-              type="date"
+              label="Date"
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={setDate}
             />
           </Field>
           {aggregate ? (
@@ -384,6 +504,7 @@ function TransactionForm({
                 <input
                   id="income"
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step=".01"
                   value={income}
@@ -394,6 +515,7 @@ function TransactionForm({
                 <input
                   id="expense"
                   type="number"
+                  inputMode="decimal"
                   min="0"
                   step=".01"
                   value={expense}
@@ -409,6 +531,7 @@ function TransactionForm({
                   <input
                     id={`allocation-${index}`}
                     type="number"
+                    inputMode="decimal"
                     min="0"
                     step=".01"
                     value={allocations[name] || "0"}
@@ -429,6 +552,7 @@ function TransactionForm({
                   id="type"
                   label="Type"
                   value={type}
+                  disabled={lockedExpense}
                   options={[
                     { value: "expense", label: "Expense" },
                     { value: "income", label: "Income" },
@@ -443,6 +567,7 @@ function TransactionForm({
                 <input
                   id="amount"
                   type="number"
+                  inputMode="decimal"
                   min=".01"
                   step=".01"
                   value={amount}
@@ -493,6 +618,347 @@ function TransactionForm({
         </p>
       </div>
     </Form>
+  );
+}
+function SubscriptionForm({
+  subscription,
+  date,
+}: {
+  subscription?: Subscription;
+  date?: string;
+}) {
+  const { model, store, notify } = useApp();
+  const [name, setName] = useState(subscription?.name || "");
+  const [amount, setAmount] = useState(String(subscription?.amount ?? ""));
+  const [cadence, setCadence] = useState<BillingCadence>(
+    subscription?.cadence || "monthly",
+  );
+  const [startDate, setStartDate] = useState(
+    subscription?.startDate || date || Finance.localDate(),
+  );
+  const [status, setStatus] = useState<SubscriptionStatus>(
+    subscription?.status || "active",
+  );
+  const [category, setCategory] = useState(subscription?.category || "");
+  const [card, setCard] = useState(subscription?.card || "");
+  const [note, setNote] = useState(subscription?.note || "");
+  const site = useSiteIcon(subscription?.siteIcon);
+  const categories = model.categories.filter(
+    (item) => model.meta(item).type !== "Income" || item === category,
+  );
+  return (
+    <Form
+      label={subscription ? "Save subscription" : "Add subscription"}
+      pending={site.pending ? "Looking up icon…" : undefined}
+      save={() => {
+        if (site.invalid)
+          throw Error("Enter a public website or clear the website field.");
+        store.saveSubscription(
+          {
+            name,
+            amount: Number(amount),
+            cadence,
+            startDate,
+            status,
+            category,
+            card,
+            note,
+            siteIcon: site.value,
+          },
+          subscription?.id,
+        );
+        notify(
+          subscription
+            ? "Subscription updated."
+            : "Subscription added to your calendar.",
+        );
+      }}
+    >
+      <div className="form-section">
+        <div className="form-grid">
+          <Field label="Subscription name" id="subscription-name" full>
+            <input
+              id="subscription-name"
+              maxLength={100}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. Internet, gym, music"
+            />
+          </Field>
+          <Field label="Charge amount (THB)" id="subscription-amount">
+            <input
+              id="subscription-amount"
+              type="number"
+              inputMode="decimal"
+              min=".01"
+              step=".01"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder="0.00"
+            />
+          </Field>
+          <Field label="Billing cycle" id="subscription-cycle">
+            <Select
+              id="subscription-cycle"
+              label="Billing cycle"
+              value={cadence}
+              onChange={(value) => setCadence(value as BillingCadence)}
+              options={Object.entries(CADENCES).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+            />
+          </Field>
+          <Field label="First renewal date" id="subscription-date">
+            <DatePicker
+              id="subscription-date"
+              label="First renewal date"
+              value={startDate}
+              onChange={setStartDate}
+            />
+          </Field>
+          <Field label="Tracking status" id="subscription-status">
+            <Select
+              id="subscription-status"
+              label="Tracking status"
+              value={status}
+              onChange={(value) => setStatus(value as SubscriptionStatus)}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "paused", label: "Paused" },
+                { value: "archived", label: "Archived" },
+              ]}
+            />
+          </Field>
+          <Field label="Expense category (optional)" id="subscription-category">
+            <Select
+              id="subscription-category"
+              label="Expense category"
+              value={category}
+              onChange={setCategory}
+              options={[
+                { value: "", label: "Uncategorized" },
+                ...categories.map((name) => ({ value: name, label: name })),
+              ]}
+            />
+          </Field>
+          <Field label="Payment method (optional)" id="subscription-card">
+            <Select
+              id="subscription-card"
+              label="Subscription payment method"
+              value={card}
+              onChange={setCard}
+              options={[
+                { value: "", label: "Cash / bank / unspecified" },
+                ...model.cards.map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                })),
+              ]}
+            />
+          </Field>
+          <Field label="Notes (optional)" id="subscription-note" full>
+            <textarea
+              id="subscription-note"
+              maxLength={500}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Plan details or where to manage billing"
+            />
+          </Field>
+        </div>
+        <SiteIconField id="subscription-site" lookup={site} />
+        <p className="preview-box">
+          {Number(amount) > 0 && Number.isFinite(Number(amount)) && (
+            <>
+              About{" "}
+              <b>
+                {baht2(monthlyEquivalent({ amount: Number(amount), cadence }))}{" "}
+                / month
+              </b>
+              .{" "}
+            </>
+          )}
+          Your first date anchors the schedule. Pausing or archiving stops
+          reminders here without changing the service or past transactions.
+        </p>
+      </div>
+    </Form>
+  );
+}
+
+function RenewalDetails({ id, date }: { id: string; date: string }) {
+  const { model, store, open, notify, close } = useApp();
+  const [existing, setExisting] = useState("");
+  const [error, setError] = useState("");
+  const renewal = model.renewals.get(id, date);
+  if (!renewal)
+    return (
+      <p className="space-empty-note">
+        This date is no longer on the subscription’s schedule.
+      </p>
+    );
+  const { subscription, status, transaction } = renewal;
+  const from = addDays(date, -30),
+    until = addDays(date, 30);
+  const nearby = model.transactions
+    .filter(
+      (row) =>
+        row.source === "local" &&
+        !row.renewal &&
+        !row.income &&
+        row.expense > 0 &&
+        row.date >= from &&
+        row.date <= until,
+    )
+    .slice()
+    .reverse();
+  const setSkipped = (skip: boolean) => {
+    try {
+      store.setRenewalSkipped(id, date, skip);
+      notify(
+        skip
+          ? "Renewal skipped. No transaction was added."
+          : "Renewal put back on the calendar.",
+      );
+      close();
+    } catch (error) {
+      setError((error as Error).message);
+    }
+  };
+  return (
+    <>
+      <div className="renewal-review-head">
+        <div className="recurring-icon">
+          <RecordIcon
+            site={subscription.siteIcon}
+            size={24}
+            fallback={<Repeat2 size={24} />}
+          />
+        </div>
+        <div>
+          <h3>{subscription.name}</h3>
+          <p>
+            {CADENCES[subscription.cadence]} · {dateText(date, "long")}
+          </p>
+        </div>
+      </div>
+      <div className="detail-summary renewal-detail-summary">
+        <div>
+          <span>Expected charge</span>
+          <b>{baht2(subscription.amount)}</b>
+        </div>
+        <div>
+          <span>Status</span>
+          <b>
+            {status === "recorded"
+              ? "Recorded"
+              : status === "skipped"
+                ? "Skipped"
+                : date < Finance.localDate()
+                  ? "Not logged"
+                  : "Scheduled"}
+          </b>
+        </div>
+        {transaction && (
+          <div>
+            <span>Recorded charge</span>
+            <b>{baht2(transaction.expense)}</b>
+          </div>
+        )}
+      </div>
+      <div className="entry-actions renewal-review-actions">
+        {transaction && (
+          <button
+            className="primary"
+            onClick={() => open({ kind: "day", date: transaction.date })}
+          >
+            View recorded entry <ArrowRight size={15} />
+          </button>
+        )}
+        {status === "scheduled" && (
+          <>
+            <button
+              className="primary"
+              onClick={() =>
+                open({
+                  kind: "transaction",
+                  type: "expense",
+                  renewal: { subscriptionId: id, scheduledFor: date },
+                })
+              }
+            >
+              Record charge
+            </button>
+            <button className="secondary" onClick={() => setSkipped(true)}>
+              Skip this date
+            </button>
+          </>
+        )}
+        {status === "skipped" && (
+          <button className="primary" onClick={() => setSkipped(false)}>
+            Restore renewal
+          </button>
+        )}
+        <button
+          className="secondary"
+          onClick={() => open({ kind: "subscription", subscription })}
+        >
+          Edit subscription
+        </button>
+      </div>
+      {status === "scheduled" && (
+        <details className="renewal-link-picker">
+          <summary>Already in your ledger? Link an expense</summary>
+          <p className="ledger-hint">
+            Choose a local expense within 30 days of the renewal. Linking keeps
+            its amount and date as entered.
+          </p>
+          {nearby.length ? (
+            <div className="renewal-link-controls">
+              <Select
+                label="Existing expense"
+                value={existing}
+                onChange={setExisting}
+                options={[
+                  { value: "", label: "Choose an expense" },
+                  ...nearby.map((row) => ({
+                    value: row.id,
+                    label: `${dateText(row.date)} · ${row.note || row.category || "Expense"} · ${baht2(row.expense)}`,
+                  })),
+                ]}
+              />
+              <button
+                className="secondary"
+                disabled={!existing}
+                onClick={() => {
+                  try {
+                    store.linkRenewal(id, date, existing);
+                    setError("");
+                    notify(
+                      "Expense linked. No duplicate transaction was added.",
+                    );
+                  } catch (error) {
+                    setError((error as Error).message);
+                  }
+                }}
+              >
+                Link expense
+              </button>
+            </div>
+          ) : (
+            <p className="ledger-hint">
+              No eligible expenses in that date range.
+            </p>
+          )}
+        </details>
+      )}
+      {error && (
+        <p className="modal-error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 export function DayDetails({
@@ -659,6 +1125,9 @@ function CardForm({ card, kind }: { card?: Card; kind?: "credit" | "cash" }) {
       String(card?.dueDay || Number(card?.paymentDue?.slice(8, 10)) || ""),
     ),
     [status, setStatus] = useState(card?.status || "Active"),
+    [network, setNetwork] = useState(
+      isCardNetwork(card?.network) ? card.network : "mastercard",
+    ),
     [color, setColor] = useState(card?.color || COLORS[0]),
     [color2, setColor2] = useState(card?.color2 || "#17211F");
   const preview = {
@@ -666,6 +1135,7 @@ function CardForm({ card, kind }: { card?: Card; kind?: "credit" | "cash" }) {
     last4,
     kind: cardKind,
     status,
+    network,
     color: normalizeColor(color) || "#7460DC",
     color2: normalizeColor(color2) || "#17211F",
   };
@@ -718,16 +1188,16 @@ function CardForm({ card, kind }: { card?: Card; kind?: "credit" | "cash" }) {
             />
           </Field>
           <Field label="Payment due day (optional)" id="due">
-            <input
+            <NumberField
               id="due"
-              type="number"
-              min="1"
-              max="31"
+              label="payment due day"
+              min={1}
+              max={31}
               value={due}
-              onChange={(event) => setDue(event.target.value)}
+              onChange={setDue}
             />
           </Field>
-          <Field label="Status" id="status" full>
+          <Field label="Status" id="status">
             <Select
               id="status"
               label="Status"
@@ -736,6 +1206,20 @@ function CardForm({ card, kind }: { card?: Card; kind?: "credit" | "cash" }) {
               options={[
                 ...new Set(["Active", "Plan", "Completed", status]),
               ].map((value) => ({ value, label: value }))}
+            />
+          </Field>
+          <Field label="Card network" id="card-network">
+            <Select
+              id="card-network"
+              label="Card network"
+              value={network}
+              onChange={(next) => {
+                if (isCardNetwork(next)) setNetwork(next);
+              }}
+              options={Object.entries(CARD_NETWORKS).map(([value, label]) => ({
+                value,
+                label,
+              }))}
             />
           </Field>
         </div>
@@ -777,11 +1261,29 @@ function PlanForm({ plan }: { plan?: Plan }) {
     ),
     [paid, setPaid] = useState(String(plan?.paidMonths || 0)),
     [card, setCard] = useState(plan?.card || "");
+  const [appearance, setAppearance] = useState<PlanAppearanceState>({
+    glyph: glyphForPlan(plan),
+    coverPhoto: isPlanCover(plan?.coverPhoto) ? plan.coverPhoto : undefined,
+    coverFrame: isCoverFrame(plan?.coverFrame) ? plan.coverFrame : undefined,
+  });
+  const [preparing, setPreparing] = useState(false);
+  const site = useSiteIcon(plan?.siteIcon);
   const calc = calcPlan(Number(amount) || 0, months, rate);
   return (
     <Form
+      pending={
+        preparing
+          ? "Preparing photo…"
+          : site.pending
+            ? "Looking up icon…"
+            : undefined
+      }
       save={() => {
+        if (site.invalid)
+          throw Error("Enter a public website or clear the website field.");
         store.savePlan({
+          ...appearance,
+          siteIcon: site.value,
           id: plan?.id || "",
           name,
           amount: Number(amount),
@@ -811,6 +1313,7 @@ function PlanForm({ plan }: { plan?: Plan }) {
             <input
               id="plan-amount"
               type="number"
+              inputMode="decimal"
               min=".01"
               step=".01"
               value={amount}
@@ -851,21 +1354,22 @@ function PlanForm({ plan }: { plan?: Plan }) {
             <input id="total" value={calc.total.toFixed(2)} readOnly />
           </Field>
           <Field label="First payment month" id="plan-start">
-            <input
+            <DatePicker
               id="plan-start"
-              type="month"
+              label="First payment month"
+              mode="month"
               value={start}
-              onChange={(event) => setStart(event.target.value)}
+              onChange={setStart}
             />
           </Field>
           <Field label="Payments already made" id="plan-paid">
-            <input
+            <NumberField
               id="plan-paid"
-              type="number"
-              min="0"
+              label="payments made"
+              min={0}
               max={months}
               value={paid}
-              onChange={(event) => setPaid(event.target.value)}
+              onChange={setPaid}
             />
           </Field>
           <Field label="Linked card (optional)" id="plan-card">
@@ -901,6 +1405,17 @@ function PlanForm({ plan }: { plan?: Plan }) {
           does not create an expense; record actual payments in Transactions.
         </p>
       </div>
+      <PlanAppearance
+        value={appearance}
+        onChange={setAppearance}
+        color={safeColor(
+          model.cards.find((item) => item.id === card)?.color,
+          "#9b8cdb",
+        )}
+        preparing={preparing}
+        onPreparing={setPreparing}
+        site={site}
+      />
     </Form>
   );
 }
@@ -912,7 +1427,10 @@ export function PlanDetails({ plan }: { plan: Plan }) {
       <div className="detail-summary">
         <div>
           <span>Purchase</span>
-          <b>{plan.name}</b>
+          <b className="record-reference-name">
+            <PlanIcon plan={plan} size={17} />
+            {plan.name}
+          </b>
         </div>
         <div>
           <span>Status</span>
@@ -1020,6 +1538,7 @@ function BudgetForm() {
         <input
           id="monthly-budget"
           type="number"
+          inputMode="decimal"
           min="0"
           step=".01"
           value={amount}
@@ -1180,8 +1699,9 @@ function DataSettings() {
       </div>
       <p className="ledger-hint">
         Save data keeps your workspace mode, transactions, cards, plans,
-        categories, budgets, pins, and preferences in a portable backup. Browser
-        data does not sync between devices.
+        categories, subscriptions, linked renewals, budgets, pins, and
+        preferences in a portable backup. Browser data does not sync between
+        devices.
       </p>
       <div className="entry-actions">
         <button
@@ -1213,7 +1733,8 @@ function Reminders() {
       model.transactions.filter((row) => row.date.startsWith(month)),
     ),
     budget = state.budgets[month] || 0,
-    dues = model.upcoming().slice(0, 6);
+    dues = model.upcoming().slice(0, 6),
+    renewals = model.renewals.upcoming(Finance.localDate(), 14).slice(0, 6);
   return (
     <div className="space-notifications">
       {budget > 0 && sum.expense >= budget && (
@@ -1244,176 +1765,36 @@ function Reminders() {
           <ArrowRight />
         </button>
       ))}
-      {!dues.length && (
+      {renewals.map(({ subscription, date }) => (
+        <button
+          key={`${subscription.id}:${date}`}
+          className="space-notification"
+          onClick={() =>
+            open({ kind: "renewal", subscriptionId: subscription.id, date })
+          }
+        >
+          <RecordIcon
+            site={subscription.siteIcon}
+            size={19}
+            fallback={<Repeat2 />}
+          />
+          <span>
+            <strong>{subscription.name}</strong>
+            <small>
+              Renewal · {dateText(date)} · {baht2(subscription.amount)}
+            </small>
+          </span>
+          <ArrowRight />
+        </button>
+      ))}
+      {!dues.length && !renewals.length && (
         <div className="space-empty-note">
-          No card due dates yet. Add a due day to a card to see reminders here.
+          No upcoming card due dates or subscription renewals.
         </div>
       )}
       <p className="ledger-hint">
         Due-date reminders do not confirm a bill amount or post a payment.
       </p>
     </div>
-  );
-}
-function GlobalSearch() {
-  const {
-      model,
-      open,
-      close,
-      navigate,
-      setMonth,
-      setFilters,
-      setTxMode,
-      setPage,
-    } = useApp(),
-    [query, setQuery] = useState(""),
-    input = useRef<HTMLInputElement>(null),
-    results = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    input.current?.focus();
-  }, []);
-  const q = query.trim().toLowerCase();
-  const entries: { title: string; sub: string; action: () => void }[] = [];
-  for (const [view, title] of [
-    ["overview", "Overview"],
-    ["transactions", "Transactions"],
-    ["cards", "Cards"],
-    ["installments", "Installments"],
-    ["categories", "Categories"],
-  ] as [View, string][])
-    if (!q || title.toLowerCase().includes(q))
-      entries.push({
-        title,
-        sub: "Go to page",
-        action: () => {
-          close();
-          navigate(view);
-        },
-      });
-  if (q) {
-    model.transactions
-      .filter((row) =>
-        [row.note, row.date, row.category, ...Object.keys(row.categories || {})]
-          .join(" ")
-          .toLowerCase()
-          .includes(q),
-      )
-      .slice(-8)
-      .reverse()
-      .forEach((row) =>
-        entries.push({
-          title: row.note || row.category || row.date,
-          sub: `${row.date} · ${signedMoney(row.income - row.expense)}`,
-          action: () => {
-            close();
-            setMonth(row.date.slice(0, 7));
-            setFilters({ query: row.date, type: "", category: "", card: "" });
-            setTxMode("day");
-            setPage(0);
-            navigate("transactions");
-          },
-        }),
-      );
-    model.cards
-      .filter((card) => `${card.name} ${card.last4}`.toLowerCase().includes(q))
-      .forEach((card) =>
-        entries.push({
-          title: card.name,
-          sub: `${card.kind === "cash" ? "Cash" : "Credit"} card · •••• ${card.last4}`,
-          action: () => {
-            close();
-            navigate("cards");
-            requestAnimationFrame(() =>
-              document
-                .getElementById(`wallet-${card.id}`)
-                ?.scrollIntoView({ block: "center" }),
-            );
-          },
-        }),
-      );
-    model.plans
-      .filter((plan) => plan.name.toLowerCase().includes(q))
-      .forEach((plan) =>
-        entries.push({
-          title: plan.name,
-          sub: `${baht2(plan.monthly)} / month`,
-          action: () => open({ kind: "planDetail", plan }),
-        }),
-      );
-    model.categories
-      .filter((name) => name.toLowerCase().includes(q))
-      .forEach((name) =>
-        entries.push({
-          title: name,
-          sub: model.meta(name).type,
-          action: () => {
-            close();
-            navigate("categories");
-          },
-        }),
-      );
-  }
-  return (
-    <>
-      <div className="space-command-field">
-        <Search />
-        <input
-          ref={input}
-          id="space-command-query"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Try groceries, a card, or a purchase…"
-          aria-label="Search all your finances"
-          onKeyDown={(event) => {
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              results.current?.querySelector("button")?.focus();
-            }
-          }}
-        />
-      </div>
-      <div
-        ref={results}
-        className="space-command-results"
-        aria-live="polite"
-        onKeyDown={(event) => {
-          if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
-          event.preventDefault();
-          const buttons = [...results.current!.querySelectorAll("button")],
-            at = buttons.indexOf(document.activeElement as HTMLButtonElement);
-          buttons[
-            (at + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) %
-              buttons.length
-          ]?.focus();
-        }}
-      >
-        {entries.slice(0, 16).map((entry, index) => (
-          <button
-            className="space-command-result"
-            key={`${entry.title}-${index}`}
-            onClick={entry.action}
-          >
-            <span className="space-tile violet">
-              <Search />
-            </span>
-            <span>
-              <strong>{entry.title}</strong>
-              <small>{entry.sub}</small>
-            </span>
-            <ArrowRight />
-          </button>
-        ))}
-        {!entries.length && (
-          <p className="space-empty-note">
-            No matches yet. Try another note, name, or date.
-          </p>
-        )}
-      </div>
-      <div className="space-command-footer">
-        <span>↑ ↓ to move · Enter to open</span>
-        <kbd>esc</kbd>
-      </div>
-    </>
   );
 }

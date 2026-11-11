@@ -5,8 +5,10 @@ import {
   ArrowDown,
   ArrowDownUp,
   ArrowRight,
+  CalendarDays,
   CreditCard,
   Plus,
+  Repeat2,
   Tags,
   Timer,
   Wallet,
@@ -55,6 +57,20 @@ export default function WelcomePage({ onClose }: { onClose: () => void }) {
       title: "Find your own patterns.",
       copy: "Personal categories and colors that bring your spending into focus.",
     },
+    {
+      view: "calendar",
+      Icon: CalendarDays,
+      number: "05",
+      title: "See the month ahead.",
+      copy: "Read recorded activity, renewals, and card reminders in a full calendar or agenda.",
+    },
+    {
+      view: "subscriptions",
+      Icon: Repeat2,
+      number: "06",
+      title: "Know what renews next.",
+      copy: "Track recurring costs and review each charge before it joins your ledger.",
+    },
   ] as const;
   function go(view: View) {
     onClose();
@@ -95,7 +111,7 @@ export default function WelcomePage({ onClose }: { onClose: () => void }) {
             </Dialog.Title>
             <Dialog.Description className="sr-only">
               Explore your personal finance workspace. Continue to your overview
-              or open any of the four finance tools.
+              or open a finance tool.
             </Dialog.Description>
             <header className="welcome-topbar">
               <a

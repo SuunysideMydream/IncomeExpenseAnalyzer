@@ -10,9 +10,12 @@ import {
   selectLedger,
 } from "../src/lib/model";
 import { calcPlan, dueDateForMonth, Finance } from "../src/lib/finance";
+import { glyphForPlan } from "../src/lib/appearance";
+import { normalizeSiteHost } from "../src/lib/site-icon";
 import type {
   Card,
   LedgerState,
+  Plan,
   StorageAdapter,
   Transaction,
   Workbook,
@@ -56,6 +59,103 @@ const card: Card = {
   dueDay: 31,
 };
 describe("React data compatibility", () => {
+  it("preserves card networks and plan artwork through progress and backup restore", () => {
+    const storage = memory({ "mw-workspace": '{"mode":"fresh"}' });
+    const store = createLedgerStore(storage, workbook);
+    const artwork = {
+      emoji: "📷",
+      coverPhoto: "data:image/jpeg;base64,/9j/2Q==",
+      coverFrame: { zoom: 1.8, x: 0.2, y: 0.8 },
+      siteIcon: {
+        host: "youtube.com",
+        image: "data:image/png;base64,iVBORw0KGgoAAA==",
+      },
+    };
+    const plan: Plan = {
+      id: "plan-camera",
+      name: "Camera",
+      amount: 6000,
+      months: 6,
+      rate: 0,
+      monthly: 1000,
+      total: 6000,
+      status: "Ongoing",
+      startMonth: "2026-11",
+      card: card.id,
+      ...artwork,
+    };
+    store.saveCard({ ...card, network: "unionpay" });
+    store.savePlan(plan);
+    store.markPlanPaid(plan.id);
+    const sub = store.saveSubscription({
+      name: "Video",
+      amount: 129,
+      startDate: "2026-11-10",
+      cadence: "monthly",
+      status: "active",
+      siteIcon: artwork.siteIcon,
+    });
+    const restored = parseBackup(backupSource(store.getSnapshot()));
+    expect(restored.localCards[0].network).toBe("unionpay");
+    expect(restored.localPlans[0]).toMatchObject({
+      ...artwork,
+      paidMonths: 1,
+      monthly: 1000,
+    });
+    expect(glyphForPlan(restored.localPlans[0])).toBe("camera");
+    expect(
+      restored.subscriptions.find((item) => item.id === sub.id)?.siteIcon,
+    ).toEqual(artwork.siteIcon);
+    expect(() =>
+      store.savePlan({ ...plan, coverFrame: { zoom: 4, x: 0, y: 0 } }),
+    ).toThrow(/framing/);
+    expect(restored.transactions).toEqual([]);
+    expect(() =>
+      store.savePlan({
+        ...plan,
+        coverPhoto: "https://example.test/remote.jpg",
+      }),
+    ).toThrow(/supported cover photo/);
+    expect(() =>
+      parseBackup(
+        backupSource({
+          ...restored,
+          localPlans: [
+            { ...plan, coverPhoto: "data:image/svg+xml;base64,AA==" },
+          ],
+        }),
+      ),
+    ).toThrow(/cover photo/);
+  });
+  it("uses only public hostnames for site-icon lookups and refuses remote backup images", () => {
+    expect(
+      normalizeSiteHost("  https://YouTube.com/watch?v=keep-local#t  "),
+    ).toBe("youtube.com");
+    expect(normalizeSiteHost("youtube.com")).toBe("youtube.com");
+    for (const url of [
+      "file:///D:/private",
+      "localhost:8766",
+      "127.0.0.1",
+      "[::1]",
+      "demo.internal",
+      "https://user:token@youtube.com",
+    ])
+      expect(normalizeSiteHost(url)).toBeUndefined();
+    const store = createLedgerStore(memory(), workbook);
+    expect(() =>
+      store.saveSubscription({
+        name: "Streaming",
+        amount: 129,
+        startDate: "2026-11-10",
+        cadence: "monthly",
+        status: "active",
+        siteIcon: {
+          host: "youtube.com",
+          image: "https://example.org/icon.png",
+        },
+      }),
+    ).toThrow(/website icon/);
+  });
   it("warns if even rollback is blocked, retaining the in-memory ledger for backup", () => {
     const storage = memory({ "mw-tx": JSON.stringify([expense()]) });
     const store = createLedgerStore(

@@ -1,22 +1,36 @@
-import { ArrowRight, Plus } from "lucide-react";
+import { useEffect } from "react";
+import { ArrowRight, CalendarDays, Plus } from "lucide-react";
 import { useApp } from "../context";
-import { baht2, dueDateForMonth, Finance, monthText } from "../lib/finance";
+import { baht2, Finance, monthText } from "../lib/finance";
 import { MonthPicker } from "../components/common";
 import { WalletCard } from "../components/shadcnspace/WalletCard";
 export default function Cards() {
-  const { model, cardMonth, setCardMonth, open, cardActivity } = useApp(),
+  const {
+      model,
+      cardMonth,
+      setCardMonth,
+      open,
+      cardActivity,
+      openCalendar,
+      walletJump,
+    } = useApp(),
     rows = model.transactions.filter(
-      (row) => row.date.startsWith(cardMonth) && row.card,
+      (row) => row.date.startsWith(cardMonth) && row.card && row.expense > 0,
     ),
     sum = Finance.totals(rows);
-  const first = new Date(`${cardMonth}-01T12:00:00`),
-    start = new Date(first);
-  start.setDate(1 - first.getDay());
-  const dates = Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return { date, iso: Finance.localDate(date) };
-  });
+  useEffect(() => {
+    if (!walletJump) return;
+    document
+      .getElementById(`wallet-${walletJump.id}`)
+      ?.scrollIntoView({ block: "center", behavior: "instant" });
+  }, [walletJump]);
+  const showCalendar = () => {
+    const today = Finance.localDate();
+    openCalendar(
+      today.startsWith(cardMonth) ? today : `${cardMonth}-01`,
+      "cards",
+    );
+  };
   return (
     <>
       <div className="toolbar">
@@ -30,6 +44,12 @@ export default function Cards() {
             onChange={setCardMonth}
             label="Wallet month"
           />
+          <button
+            className="secondary wallet-calendar-shortcut"
+            onClick={showCalendar}
+          >
+            <CalendarDays size={16} /> Calendar
+          </button>
           <button className="primary" onClick={() => open({ kind: "card" })}>
             <Plus size={16} /> Add card
           </button>
@@ -81,19 +101,17 @@ export default function Cards() {
           </section>
         );
       })}
-      <section className="card">
+      <section className="card wallet-spending-summary">
         <div className="toolbar">
           <div>
-            <h3>Card spending calendar</h3>
+            <h3>Card spending</h3>
             <p className="period">
-              Spending and payment reminders for both card types.
+              Recorded purchases · {monthText(cardMonth)}
             </p>
           </div>
-          <MonthPicker
-            value={cardMonth}
-            onChange={setCardMonth}
-            label="Card month"
-          />
+          <button className="secondary" onClick={showCalendar}>
+            <CalendarDays size={17} /> Open card calendar
+          </button>
         </div>
         <div className="card-report">
           <div>
@@ -101,18 +119,12 @@ export default function Cards() {
             <strong>{baht2(sum.expense)}</strong>
           </div>
           <div>
-            <span>Transactions</span>
+            <span>Purchase records</span>
             <strong>{rows.length}</strong>
           </div>
           <div>
             <span>Cards used</span>
-            <strong>
-              {
-                new Set(
-                  rows.filter((row) => row.expense > 0).map((row) => row.card),
-                ).size
-              }
-            </strong>
+            <strong>{new Set(rows.map((row) => row.card)).size}</strong>
           </div>
         </div>
         <div className="card-spend-summary">
@@ -142,69 +154,9 @@ export default function Cards() {
           ))}
         </div>
         <p className="ledger-hint">
-          Select a purchase to see its details, or use ＋ to record an expense
-          on that day. Due dates are reminders; payments are not posted
-          automatically.
+          Open Calendar to see individual purchases and due dates, or add an
+          expense on a specific day.
         </p>
-        <div className="calendar-grid">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div className="calendar-weekday" key={day}>
-              {day}
-            </div>
-          ))}
-          {dates.map(({ date, iso }) => {
-            const current = iso.startsWith(cardMonth);
-            return (
-              <div
-                key={iso}
-                className={`calendar-day ${current ? "" : "muted"} ${iso === Finance.localDate() ? "today" : ""}`}
-              >
-                <span className="calendar-number">{date.getDate()}</span>
-                {current && (
-                  <button
-                    className="calendar-add"
-                    aria-label={`Add expense on ${iso}`}
-                    onClick={() =>
-                      open({ kind: "transaction", type: "expense", date: iso })
-                    }
-                  >
-                    ＋
-                  </button>
-                )}
-                {rows
-                  .filter((row) => row.date === iso && row.expense > 0)
-                  .map((row) => {
-                    const card = model.cards.find(
-                      (card) => card.id === row.card,
-                    );
-                    return (
-                      <button
-                        key={row.id}
-                        className="calendar-event"
-                        style={{ background: card?.color || "#2c9b72" }}
-                        title={`${card?.name || "Card"}: ${baht2(row.expense)}`}
-                        onClick={() => open({ kind: "day", date: iso })}
-                      >
-                        {card?.name || "Card"} · {baht2(row.expense)}
-                      </button>
-                    );
-                  })}
-                {current &&
-                  model.cards
-                    .filter(
-                      (card) =>
-                        card.status !== "Completed" &&
-                        dueDateForMonth(card, cardMonth) === iso,
-                    )
-                    .map((card) => (
-                      <div key={card.id} className="calendar-event due">
-                        {card.name} due
-                      </div>
-                    ))}
-              </div>
-            );
-          })}
-        </div>
       </section>
     </>
   );

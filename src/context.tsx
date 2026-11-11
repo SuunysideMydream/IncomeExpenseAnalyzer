@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -11,9 +12,11 @@ import {
 import { useSystemReducedMotion } from "./lib/motion";
 import { Finance } from "./lib/finance";
 import { createLedgerStore, KEYS, selectLedger } from "./lib/model";
+import { viewFromHash } from "./lib/routes";
 import type { LedgerModel, LedgerStore } from "./lib/model";
 import type {
   DialogState,
+  CalendarFilter,
   Filters,
   LedgerState,
   View,
@@ -35,6 +38,11 @@ export interface AppContextType {
   setMonth: (month: string) => void;
   cardMonth: string;
   setCardMonth: (month: string) => void;
+  walletJump: { id: string } | null;
+  showWalletCard: (id: string) => void;
+  calendar: { date: string; filter: CalendarFilter };
+  setCalendar: (calendar: { date: string; filter: CalendarFilter }) => void;
+  openCalendar: (date?: string, filter?: CalendarFilter) => void;
   dialog: DialogState | null;
   open: (dialog: DialogState) => void;
   close: () => void;
@@ -75,11 +83,19 @@ export function AppProvider({
     store.getSnapshot,
   );
   const model = useMemo(() => selectLedger(state, workbook), [state, workbook]);
-  const today = Finance.localDate().slice(0, 7);
-  const [view, setView] = useState<View>("overview"),
+  const date = Finance.localDate();
+  const today = date.slice(0, 7);
+  const [view, setView] = useState<View>(() =>
+      viewFromHash(window.location.hash),
+    ),
     [month, setMonthRaw] = useState(today),
     [cardMonth, setCardMonth] = useState(today);
+  const [calendar, setCalendar] = useState<{
+    date: string;
+    filter: CalendarFilter;
+  }>({ date, filter: "all" });
   const [dialog, setDialog] = useState<DialogState | null>(null),
+    [walletJump, setWalletJump] = useState<{ id: string } | null>(null),
     [filters, setFilters] = useState<Filters>(EMPTY_FILTERS),
     [txMode, setTxMode] = useState<"day" | "month">("day");
   const [sort, setSort] = useState("newest"),
@@ -88,11 +104,49 @@ export function AppProvider({
   const systemReduced = useSystemReducedMotion(),
     calm = Boolean(systemReduced) || state.workspace.motion === "reduced";
   const notify = useCallback((message: string) => setNotice(message), []);
-  const navigate = useCallback((next: View) => {
+  const activate = useCallback((next: View) => {
     setView(next);
     setPage(0);
+    setWalletJump(null);
     window.scrollTo({ top: 0, behavior: "instant" });
   }, []);
+  const navigate = useCallback(
+    (next: View) => {
+      const hash = `#/${next}`;
+      if (
+        window.location.hash !== hash &&
+        (next !== "overview" || window.location.hash)
+      )
+        window.history.pushState(null, "", hash);
+      activate(next);
+    },
+    [activate],
+  );
+  const showWalletCard = useCallback(
+    (id: string) => {
+      navigate("cards");
+      setWalletJump({ id });
+    },
+    [navigate],
+  );
+  useEffect(() => {
+    const sync = () => {
+      setDialog(null);
+      activate(viewFromHash(window.location.hash));
+    };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [activate]);
+  const openCalendar = useCallback(
+    (day = Finance.localDate(), filter: CalendarFilter = "all") => {
+      setCalendar({
+        date: Finance.validDate(day) ? day : Finance.localDate(),
+        filter,
+      });
+      navigate("calendar");
+    },
+    [navigate],
+  );
   const setMonth = useCallback((next: string) => {
     setMonthRaw(next);
     setPage(0);
@@ -103,29 +157,30 @@ export function AppProvider({
     (id: string, selected = month) => {
       setFilters({ query: "", type: "expense", category: "", card: id });
       setMonthRaw(selected);
-      setView("transactions");
+      navigate("transactions");
       setTxMode("day");
       setPage(0);
       setDialog(null);
-      window.scrollTo({ top: 0, behavior: "instant" });
     },
-    [month],
+    [month, navigate],
   );
-  const openMonth = useCallback((next: string) => {
-    setMonthRaw(next);
-    setView("transactions");
-    setTxMode("day");
-    setFilters(EMPTY_FILTERS);
-    setPage(0);
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, []);
+  const openMonth = useCallback(
+    (next: string) => {
+      setMonthRaw(next);
+      navigate("transactions");
+      setTxMode("day");
+      setFilters(EMPTY_FILTERS);
+      setPage(0);
+    },
+    [navigate],
+  );
   const transactionSaved = useCallback((date: string) => {
     setMonthRaw(date.slice(0, 7));
     setCardMonth(date.slice(0, 7));
     setFilters(EMPTY_FILTERS);
     setPage(0);
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.body.classList.toggle("dark", state.theme === "dark");
     document.body.dataset.motion = calm ? "reduced" : "full";
     document.body.dataset.density = state.workspace.density || "comfortable";
@@ -163,6 +218,11 @@ export function AppProvider({
         setMonth,
         cardMonth,
         setCardMonth,
+        walletJump,
+        showWalletCard,
+        calendar,
+        setCalendar,
+        openCalendar,
         dialog,
         open,
         close,

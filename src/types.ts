@@ -1,7 +1,36 @@
 import type { CSSProperties } from "react";
+import type { CardNetwork, CoverFrame, PlanGlyph } from "./lib/appearance";
+import type { SiteIcon } from "./lib/site-icon";
 
 export type View =
-  "overview" | "transactions" | "cards" | "installments" | "categories";
+  | "overview"
+  | "transactions"
+  | "calendar"
+  | "cards"
+  | "subscriptions"
+  | "installments"
+  | "categories";
+export type CalendarFilter = "all" | "activity" | "renewals" | "cards";
+export type CalendarDetailSection = "activity" | "cards" | "renewals";
+export type BillingCadence = "weekly" | "monthly" | "quarterly" | "yearly";
+export type SubscriptionStatus = "active" | "paused" | "archived";
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  cadence: BillingCadence;
+  startDate: string;
+  status: SubscriptionStatus;
+  category?: string;
+  card?: string;
+  note?: string;
+  skippedDates?: string[];
+  siteIcon?: SiteIcon;
+}
+export interface RenewalLink {
+  subscriptionId: string;
+  scheduledFor: string;
+}
 export type TransactionType = "income" | "expense";
 export interface Transaction {
   id: string;
@@ -14,6 +43,7 @@ export interface Transaction {
   note?: string;
   source?: "workbook" | "local";
   deleted?: boolean;
+  renewal?: RenewalLink;
 }
 export interface Card {
   id: string;
@@ -22,6 +52,7 @@ export interface Card {
   color: string;
   color2?: string;
   kind?: "credit" | "cash";
+  network?: CardNetwork;
   status: string;
   dueDay?: number | null;
   paymentDue?: string | null;
@@ -41,6 +72,11 @@ export interface Plan {
   startMonth?: string;
   paidMonths?: number;
   card?: string;
+  emoji?: string;
+  glyph?: PlanGlyph;
+  coverPhoto?: string;
+  coverFrame?: CoverFrame;
+  siteIcon?: SiteIcon;
 }
 export interface CategoryMeta {
   type: "Expense" | "Income" | "Both";
@@ -98,6 +134,7 @@ export interface LedgerState {
   transactions: Transaction[];
   localCards: Card[];
   localPlans: Plan[];
+  subscriptions: Subscription[];
   categoryMeta: Record<string, CategoryMeta>;
   planOverrides: Record<string, Partial<Plan>>;
   cardOverrides: Record<string, Partial<Card>>;
@@ -124,12 +161,16 @@ export type DialogState =
       type?: TransactionType;
       date?: string;
       card?: string;
+      renewal?: RenewalLink;
     }
   | { kind: "day"; date: string; filtered?: boolean }
+  | { kind: "calendarDay"; date: string; section: CalendarDetailSection }
   | { kind: "card"; card?: Card; cardKind?: "cash" | "credit" }
   | { kind: "plan"; plan?: Plan }
   | { kind: "planDetail"; plan: Plan }
   | { kind: "category"; name?: string }
+  | { kind: "subscription"; subscription?: Subscription; date?: string }
+  | { kind: "renewal"; subscriptionId: string; date: string }
   | {
       kind:
         | "budget"

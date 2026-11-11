@@ -1,4 +1,4 @@
-import { Finance } from "./finance";
+import { Finance, nextMonth } from "./finance";
 import type { Transaction } from "../types";
 
 export interface FlowPoint {
@@ -49,6 +49,47 @@ export function flowPoints(
       expense: row?.expense || 0,
     };
   });
+}
+
+function cumulativeSpending(points: FlowPoint[]) {
+  let total = 0;
+  return points.map(({ date, expense }) => {
+    total = Finance.money(total + expense);
+    return { date, total };
+  });
+}
+
+export function spendingPace(
+  rows: Transaction[],
+  month: string,
+  today: string,
+) {
+  const previousMonth = nextMonth(month, -1);
+  const previousRows = rows.filter((row) => row.date.startsWith(previousMonth));
+  const current = flowPoints(rows, month, "daily");
+  const previous = previousRows.length
+    ? cumulativeSpending(flowPoints(previousRows, previousMonth, "daily"))
+    : [];
+  const currentMonth = today.startsWith(month);
+  const todayIndex = Number(today.slice(8, 10)) - 1;
+  const latestExpense = current.reduce(
+    (last, point, index) => (point.expense !== 0 ? index : last),
+    -1,
+  );
+  const lastIndex = currentMonth
+    ? Math.max(todayIndex, latestExpense)
+    : current.length - 1;
+  return {
+    previousMonth,
+    initialIndex: currentMonth ? todayIndex : lastIndex,
+    days: cumulativeSpending(current.slice(0, lastIndex + 1)).map(
+      (day, index) => ({
+        ...day,
+        // When the earlier month is shorter, its closing total is the comparison.
+        previous: previous[Math.min(index, previous.length - 1)] ?? null,
+      }),
+    ),
+  };
 }
 
 // Horizontal control handles keep each segment between its exact endpoint values.

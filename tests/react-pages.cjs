@@ -19,6 +19,8 @@ const types = {
   ".css": "text/css",
   ".json": "application/json",
   ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
+  ".png": "image/png",
 };
 const server = http.createServer((req, res) => {
   const uri = new URL(req.url, "http://localhost").pathname;
@@ -51,6 +53,16 @@ const keys = [
   "mw-workspace",
   "mw-budgets",
   "mw-category-aliases",
+  "mw-subscriptions",
+];
+const views = [
+  "overview",
+  "transactions",
+  "calendar",
+  "cards",
+  "subscriptions",
+  "installments",
+  "categories",
 ];
 function fixture() {
   const rows = Array.from({ length: 24 }, (_, i) => ({
@@ -130,11 +142,12 @@ async function run(name, fn) {
   checks++;
   console.log(`PASS ${checks}: ${name}`);
 }
-async function setup(data) {
+async function setup(data, options = {}) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
     timezoneId: "Asia/Bangkok",
     reducedMotion: "no-preference",
+    ...options,
   });
   await context.route("**/*", (route) => {
     if (new URL(route.request().url()).hostname !== "127.0.0.1") {
@@ -268,13 +281,32 @@ async function screenshot(page, name) {
       async () => {
         assert.deepEqual(await raw(page), pack(initial));
         assert.equal(await page.locator("[data-moneywise-react]").count(), 1);
-        assert.equal(
+        assert.match(
           await page
-            .locator(".space-place-image")
-            .evaluate((img) => img.complete && img.naturalWidth > 0),
-          true,
+            .locator(".overview-contours")
+            .evaluate((node) => getComputedStyle(node).backgroundImage),
+          /radial-gradient/,
         );
         assert.match(await page.locator(".kpis").innerText(), /2,676\.00/);
+        // At 26.76%, the animated marker should settle on the right edge of the ring.
+        await page.waitForFunction(() => {
+          const marker = document
+            .querySelector(".budget-orbit-pip")
+            ?.getBoundingClientRect();
+          const ring = document
+            .querySelector(".budget-orbit-track")
+            ?.getBoundingClientRect();
+          if (!marker || !ring) return false;
+          const dx =
+            marker.left + marker.width / 2 - ring.left - ring.width / 2;
+          const dy =
+            marker.top + marker.height / 2 - ring.top - ring.height / 2;
+          return (
+            dx > ring.width * 0.47 &&
+            dy > ring.height * 0.035 &&
+            dy < ring.height * 0.08
+          );
+        });
       },
     );
     await run(
@@ -508,7 +540,8 @@ async function screenshot(page, name) {
         await page.locator(".entry-item").click({ button: "right" });
         await page.getByRole("menu").waitFor();
         await page.keyboard.press("Escape");
-        assert.equal(await page.getByRole("menu").count(), 0);
+        await page.getByRole("menu").waitFor({ state: "detached" });
+        await page.getByRole("dialog").waitFor({ state: "visible" });
         assert.equal(await page.getByRole("dialog").count(), 1);
         await page
           .locator(".entry-item")
@@ -570,7 +603,7 @@ async function screenshot(page, name) {
       },
     );
     await run(
-      "Cards reveal, 3D flip, inert hidden face and filtered activity",
+      "Cards reveal, hover flip, keyboard flip and filtered activity",
       async () => {
         await nav(page, "cards");
         const card = page.locator("[data-space-card=test-card]");
@@ -592,20 +625,73 @@ async function screenshot(page, name) {
           await card.locator("[data-card-purchase-value]").innerText(),
           "••••••",
         );
-        await card
-          .getByRole("button", { name: "Show details for Everyday Violet" })
-          .click();
+        await card.evaluate((node) => {
+          const back = node.querySelector(".space-card-back");
+          const rotator = node.querySelector(".space-card-rotator");
+          const observer = new MutationObserver(() => {
+            if (back.inert) return;
+            const matrix = new DOMMatrixReadOnly(
+              getComputedStyle(rotator).transform,
+            );
+            node.dataset.backSettled = String(
+              matrix.m11 < -0.9999 && Math.abs(matrix.m13) < 0.0001,
+            );
+            observer.disconnect();
+          });
+          observer.observe(back, {
+            attributes: true,
+            attributeFilter: ["inert"],
+          });
+        });
+        const stage = card.locator(".wallet-card-stage");
+        assert.equal(
+          await card
+            .locator(".space-wallet-card-actions")
+            .getByText("Flip", { exact: true })
+            .count(),
+          0,
+        );
+        await stage.hover();
         assert.equal(
           await card.locator(".react-card-face").evaluate((node) => node.inert),
           true,
         );
-        assert.equal(
-          await card.locator(".space-card-back").evaluate((node) => node.inert),
-          false,
+        const activity = card.getByRole("button", {
+          name: "View activity",
+          exact: false,
+        });
+        await activity.waitFor();
+        assert.equal(await card.getAttribute("data-back-settled"), "true");
+        await page.mouse.move(3, 3);
+        await page.waitForFunction(
+          () => document.querySelector(".react-card-face")?.inert === false,
         );
-        await card
-          .getByRole("button", { name: "View activity", exact: false })
-          .click();
+        await card.locator(".wallet-keyboard-toggle").press("Enter");
+        await activity.waitFor();
+        const originalViewport = page.viewportSize();
+        for (const width of [320, 390, 768, 1280]) {
+          await page.setViewportSize({ width, height: 900 });
+          assert.equal(
+            await card.locator(".space-card-back").evaluate((face) => {
+              const frame = face.getBoundingClientRect();
+              return [
+                ...face.querySelectorAll(".space-card-back-actions button"),
+              ].every((button) => {
+                const rect = button.getBoundingClientRect();
+                return (
+                  rect.left >= frame.left &&
+                  rect.right <= frame.right &&
+                  rect.bottom <= frame.bottom - 4
+                );
+              });
+            }),
+            true,
+            `Card actions fit inside the face at ${width}px`,
+          );
+        }
+        await page.setViewportSize(originalViewport);
+        await stage.hover();
+        await activity.click();
         await page.locator("[data-page=transactions]").waitFor();
         assert.match(
           await page
@@ -616,7 +702,7 @@ async function screenshot(page, name) {
       },
     );
     await run(
-      "Cash-card creation, HEX/gradient live preview, editing and two wallet sections",
+      "Cash-card creation, gradient and network previews, editing and two wallet sections",
       async () => {
         await nav(page, "cards");
         await page
@@ -624,6 +710,21 @@ async function screenshot(page, name) {
           .click();
         await page.locator("#name").fill("Everyday Cash");
         await page.locator("#last4").fill("9876");
+        for (const [label, network] of [
+          ["Mastercard", "mastercard"],
+          ["UnionPay", "unionpay"],
+          ["JCB", "jcb"],
+          ["Visa", "visa"],
+        ]) {
+          await choose(page, "Card network", label);
+          await page
+            .locator(`#card-preview [data-network="${network}"]`)
+            .waitFor();
+        }
+        assert.equal(
+          await page.locator('.react-modal input[type="color"]').count(),
+          0,
+        );
         await page.locator("#due").fill("31");
         await page.locator("#card-color-hex").fill("#abc");
         await page.locator("#card-color-hex").blur();
@@ -638,6 +739,7 @@ async function screenshot(page, name) {
           (card) => card.name === "Everyday Cash",
         );
         assert.equal(cash.kind, "cash");
+        assert.equal(cash.network, "visa");
         assert.equal(cash.color, "#AABBCC");
         assert.equal(cash.color2, "#123456");
         assert.equal(
@@ -647,17 +749,43 @@ async function screenshot(page, name) {
         await page
           .getByRole("button", { name: "Edit Everyday Cash", exact: true })
           .click();
+        assert.equal(await page.locator("#card-network").innerText(), "Visa");
         await page.locator("#name").fill("Cash Polygon");
         await save(page);
         await screenshot(page, "cards-light");
       },
     );
     await run(
-      "Card calendar purchase details, date-specific quick add and short-month due dates",
+      "Card calendar drawer, date-specific quick add and short-month due dates",
       async () => {
-        await page.locator(".calendar-event:not(.due)").first().click();
+        await page
+          .getByRole("button", { name: "Open card calendar", exact: true })
+          .click();
+        await page.locator("[data-page=calendar]").waitFor();
+        assert.equal(
+          await page
+            .getByRole("group", { name: "Calendar event filter" })
+            .getByRole("button", { name: "Cards", exact: true })
+            .getAttribute("aria-pressed"),
+          "true",
+        );
+        const day = page.locator('.planner-day[data-date="2026-10-21"]');
+        const drawer = page.locator(".calendar-drawer");
+        await day.click();
+        await drawer
+          .getByRole("heading", { name: "Everyday Violet" })
+          .waitFor();
+        assert.match(
+          await drawer.locator(".drawer-card").innerText(),
+          /Recorded this day\s+฿120\.00/,
+        );
+        await drawer
+          .getByRole("button", { name: "Activity", exact: true })
+          .click();
+        await drawer.getByRole("button", { name: "Full details" }).click();
         await page.locator(".entry-item").first().waitFor();
         await close(page);
+        await day.click();
         await page
           .getByRole("button", {
             name: "Add expense on 2026-10-21",
@@ -670,8 +798,14 @@ async function screenshot(page, name) {
         await choose(page, "Payment method", "Cash Polygon · •••• 9876");
         await page.locator("#note").fill("Cash calendar purchase");
         await save(page);
-        await page.getByRole("combobox", { name: "Card month" }).click();
-        await page.keyboard.press("Escape");
+        await choose(page, "Calendar month", "February 2027");
+        assert.match(
+          await page
+            .locator('.planner-day[data-date="2027-02-28"]')
+            .innerText(),
+          /Cash Polygon due/,
+        );
+        await nav(page, "cards");
         await page
           .getByRole("button", { name: "Edit Cash Polygon", exact: true })
           .click();
@@ -805,7 +939,8 @@ async function screenshot(page, name) {
         await save(page);
         await page.getByLabel("Dark mode", { exact: true }).check();
         await page.reload();
-        await page.locator("[data-page=overview]").waitFor();
+        await page.locator("[data-page=transactions]").waitFor();
+        await nav(page, "overview");
         assert.equal(
           await page.locator("body").getAttribute("data-motion"),
           "reduced",
@@ -828,17 +963,11 @@ async function screenshot(page, name) {
       },
     );
     await run(
-      "All five pages work at 390/768 px, themed dialogs, centered icons and sticky topbar",
+      "All seven pages work at 390/768 px, themed dialogs, centered icons and sticky topbar",
       async () => {
         for (const width of [390, 768]) {
           await page.setViewportSize({ width, height: 844 });
-          for (const view of [
-            "overview",
-            "transactions",
-            "cards",
-            "installments",
-            "categories",
-          ]) {
+          for (const view of views) {
             await nav(page, view);
             assert.equal(
               await page.evaluate(
@@ -882,7 +1011,7 @@ async function screenshot(page, name) {
     );
     let savedSource, savedData;
     await run(
-      "Backup download contains all eleven legacy keys and restores after confirmed fresh reset",
+      "Backup download contains existing keys plus subscriptions and restores after confirmed fresh reset",
       async () => {
         const download = page.waitForEvent("download");
         await page.locator("#save-backup-button").click();
@@ -906,6 +1035,7 @@ async function screenshot(page, name) {
         await page.locator("[data-page=overview]").waitFor();
         assert.deepEqual(await stored(page, "mw-tx"), []);
         assert.deepEqual(await stored(page, "mw-cards"), []);
+        assert.deepEqual(await stored(page, "mw-subscriptions"), []);
         assert.equal((await stored(page, "mw-workspace")).mode, "fresh");
         await nav(page, "cards");
         assert.equal(await page.locator("[data-space-card]").count(), 0);
@@ -1065,7 +1195,7 @@ async function screenshot(page, name) {
           ),
         );
         await p.reload();
-        await p.locator("[data-page=overview]").waitFor();
+        await p.locator("[data-page=transactions]").waitFor();
         assert.equal(
           (await stored(p, "mw-tx-overrides"))[row.id].note,
           "React imported edit",
@@ -1100,6 +1230,8 @@ async function screenshot(page, name) {
         );
         for (const view of [
           "cards",
+          "calendar",
+          "subscriptions",
           "installments",
           "categories",
           "transactions",
@@ -1112,6 +1244,8 @@ async function screenshot(page, name) {
         await p.setViewportSize({ width: 390, height: 844 });
         for (const view of [
           "transactions",
+          "calendar",
+          "subscriptions",
           "cards",
           "installments",
           "categories",
@@ -1253,13 +1387,7 @@ async function screenshot(page, name) {
         );
         for (const width of [320, 390, 768]) {
           await p.setViewportSize({ width, height: 844 });
-          for (const view of [
-            "overview",
-            "transactions",
-            "cards",
-            "installments",
-            "categories",
-          ]) {
+          for (const view of views) {
             await nav(p, view);
             assert.equal(
               await p.evaluate(
@@ -1328,10 +1456,868 @@ async function screenshot(page, name) {
         await isolated.context.close();
       },
     );
+    await run(
+      "Calendar drawer totals, keyboard navigation, agenda, reload and Back preserve the ledger",
+      async () => {
+        const isolated = await setup(fixture()),
+          p = isolated.page,
+          before = await raw(p);
+        await p.evaluate(() => document.fonts.ready);
+        assert.equal(
+          await p.evaluate(() =>
+            [...document.fonts].some(
+              (face) =>
+                face.family.includes("Moneywise Inter") &&
+                face.status === "loaded",
+            ),
+          ),
+          true,
+        );
+        await nav(p, "calendar");
+        assert.equal(new URL(p.url()).hash, "#/calendar");
+        await p.locator('.planner-day[data-date="2026-10-21"]').focus();
+        await p.keyboard.press("ArrowRight");
+        await p.waitForFunction(
+          () =>
+            document.activeElement?.getAttribute("data-date") === "2026-10-22",
+        );
+        assert.match(
+          await p.locator(".planner-selection-label").innerText(),
+          /October 22/,
+        );
+        await p.keyboard.press("Enter");
+        const drawer = p.locator(".calendar-drawer");
+        await drawer.getByRole("heading", { name: /October 22/ }).waitFor();
+        assert.deepEqual(
+          await drawer.locator(".drawer-totals dd").allTextContents(),
+          ["฿121.00", "฿0.00", "−฿121.00"],
+        );
+        assert.match(
+          await drawer.locator(".planner-plans").innerText(),
+          /Studio laptop/,
+        );
+        await drawer
+          .getByRole("button", { name: "Next day", exact: true })
+          .click();
+        await drawer.getByRole("heading", { name: /October 23/ }).waitFor();
+        assert.equal(
+          await drawer.locator(".drawer-totals dd").first().innerText(),
+          "฿122.00",
+        );
+        await drawer
+          .getByRole("button", { name: "Previous day", exact: true })
+          .click();
+        await drawer.getByRole("heading", { name: /October 22/ }).waitFor();
+        await drawer
+          .getByRole("button", { name: "New subscription", exact: true })
+          .focus();
+        await p.keyboard.press("Tab");
+        assert.equal(
+          await p.evaluate(
+            () => !!document.activeElement?.closest(".calendar-drawer"),
+          ),
+          true,
+        );
+        await screenshot(p, "fluid-calendar-drawer");
+        await p.keyboard.press("Escape");
+        await drawer.waitFor({ state: "detached" });
+        await p.waitForFunction(
+          () =>
+            document.activeElement?.getAttribute("data-date") === "2026-10-22",
+        );
+        const grid = p.getByRole("grid", { name: "October 2026" });
+        await p.getByRole("button", { name: "Agenda", exact: true }).click();
+        await p.locator(".planner-agenda-day").first().waitFor();
+        assert.equal(await grid.count(), 0);
+        await p.locator(".planner-agenda .planner-event-row").first().click();
+        await drawer.getByRole("heading", { name: /October 1,/ }).waitFor();
+        assert.equal(
+          await drawer.locator(".drawer-totals dd").nth(1).innerText(),
+          "฿30,000.00",
+        );
+        await close(p);
+        await p.getByRole("button", { name: "Month", exact: true }).click();
+        await grid.waitFor();
+        await screenshot(p, "workbench-calendar");
+        await p.goBack();
+        await p.locator("[data-page=overview]").waitFor();
+        await p.goForward();
+        await p.locator("[data-page=calendar]").waitFor();
+        await p.reload();
+        await p.locator("[data-page=calendar]").waitFor();
+        assert.deepEqual(await raw(p), before);
+        await p.setViewportSize({ width: 320, height: 680 });
+        await screenshot(p, "workbench-calendar-mobile");
+        await p.locator('.planner-day[data-date="2026-10-21"]').click();
+        const footer = drawer.locator(".calendar-drawer-actions");
+        await footer
+          .getByRole("button", { name: "New subscription", exact: true })
+          .waitFor();
+        await p.waitForFunction(() => {
+          const bounds = document
+            .querySelector(".calendar-drawer")
+            ?.getBoundingClientRect();
+          return (
+            bounds &&
+            bounds.left >= 0 &&
+            bounds.right <= innerWidth &&
+            bounds.bottom <= innerHeight
+          );
+        });
+        const footerButtons = await footer.getByRole("button").all();
+        const [expense, subscription] = await Promise.all(
+          footerButtons.map((button) => button.boundingBox()),
+        );
+        assert.ok(expense.x + expense.width <= subscription.x);
+        await screenshot(p, "fluid-calendar-drawer-mobile");
+        await close(p);
+        assert.deepEqual(await raw(p), before);
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Subscriptions schedule, record, link, skip, restore and pause without duplicate spending",
+      async () => {
+        const isolated = await setup(fixture()),
+          p = isolated.page,
+          before = await raw(p);
+        await nav(p, "subscriptions");
+        assert.match(
+          await p.locator(".subscription-empty").innerText(),
+          /No subscriptions yet/,
+        );
+        async function addSubscription(name, amount, date) {
+          await p
+            .getByRole("button", { name: "Add subscription", exact: true })
+            .click();
+          await p.locator("#subscription-name").fill(name);
+          await p.locator("#subscription-amount").fill(amount);
+          await p.locator("#subscription-date").fill(date);
+          await save(p);
+        }
+        await addSubscription("Studio Music", "179.50", "2026-10-21");
+        await addSubscription("Home Internet", "99.00", "2026-10-22");
+        assert.equal((await raw(p))["mw-tx"], before["mw-tx"]);
+        assert.match(
+          await p.locator(".recurring-summary").innerText(),
+          /278\.50/,
+        );
+        assert.equal(await p.locator(".horizon-day.has-renewal").count(), 2);
+        await screenshot(p, "workbench-subscriptions");
+        const studio = p
+          .locator(".subscription-row")
+          .filter({ hasText: "Studio Music" });
+        const internet = p
+          .locator(".subscription-row")
+          .filter({ hasText: "Home Internet" });
+        await studio.locator(".subscription-next").click();
+        await p
+          .getByRole("button", { name: "Record charge", exact: true })
+          .click();
+        assert.equal(await p.locator("#amount").inputValue(), "179.5");
+        await p.locator("#date").fill("2026-10-20");
+        await p.locator("#amount").fill("179.75");
+        await save(p);
+        const recorded = (await stored(p, "mw-tx")).at(-1);
+        assert.equal(recorded.expense, 179.75);
+        assert.equal(recorded.date, "2026-10-20");
+        assert.equal(recorded.renewal.scheduledFor, "2026-10-21");
+        await internet.locator(".subscription-next").click();
+        await p.locator(".renewal-link-picker summary").click();
+        await p
+          .getByRole("combobox", { name: "Existing expense", exact: true })
+          .click();
+        await p
+          .getByRole("option", { name: /Oct 22.*Everyday meal 22/ })
+          .click();
+        await p
+          .getByRole("button", { name: "Link expense", exact: true })
+          .click();
+        assert.match(
+          await p.getByRole("dialog").innerText(),
+          /Recorded charge/,
+        );
+        const linked = await stored(p, "mw-tx");
+        assert.equal(linked.length, 26);
+        assert.equal(
+          linked.find((row) => row.id === "tx-sample-21").expense,
+          121,
+        );
+        assert.equal(
+          linked.find((row) => row.id === "tx-sample-21").renewal.scheduledFor,
+          "2026-10-22",
+        );
+        await close(p);
+        await studio.locator(".subscription-next").click();
+        await p
+          .getByRole("button", { name: "Skip this date", exact: true })
+          .click();
+        await p.locator(".modal-backdrop").waitFor({ state: "detached" });
+        assert.deepEqual(
+          (await stored(p, "mw-subscriptions")).find(
+            (sub) => sub.name === "Studio Music",
+          ).skippedDates,
+          ["2026-11-21"],
+        );
+        await p
+          .getByRole("button", { name: "Open renewal calendar", exact: true })
+          .click();
+        await p.locator("[data-page=calendar]").waitFor();
+        await choose(p, "Calendar month", "November 2026");
+        await p.locator('.planner-day[data-date="2026-11-21"]').click();
+        await p
+          .locator('.calendar-drawer [data-event-kind="renewal"]')
+          .getByText("Skipped renewal")
+          .click();
+        await p
+          .getByRole("button", { name: "Restore renewal", exact: true })
+          .click();
+        await p.locator(".modal-backdrop").waitFor({ state: "detached" });
+        assert.deepEqual(
+          (await stored(p, "mw-subscriptions")).find(
+            (sub) => sub.name === "Studio Music",
+          ).skippedDates,
+          [],
+        );
+        assert.deepEqual(await stored(p, "mw-tx"), linked);
+        await nav(p, "subscriptions");
+        await p
+          .getByRole("button", { name: "Edit Studio Music", exact: true })
+          .click();
+        await choose(p, "Tracking status", "Paused");
+        await save(p);
+        await p
+          .getByRole("group", { name: "Subscription status filter" })
+          .getByRole("button", { name: "Paused", exact: true })
+          .click();
+        assert.equal(await p.locator(".subscription-row").count(), 1);
+        assert.equal(await studio.locator(".subscription-next").count(), 0);
+        assert.deepEqual(await stored(p, "mw-tx"), linked);
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Ambient motion, theme reveal and tablet wallet controls stay interactive",
+      async () => {
+        const isolated = await setup(fixture()),
+          p = isolated.page,
+          before = await raw(p);
+        await p.mouse.move(120, 300);
+        await p.waitForFunction(() => {
+          const scene = document.querySelector(".atmosphere-drift");
+          return (
+            scene &&
+            new DOMMatrixReadOnly(getComputedStyle(scene).transform).m41 < -5
+          );
+        });
+        assert.equal(
+          await p
+            .locator(".workspace-atmosphere")
+            .evaluate((node) => getComputedStyle(node).pointerEvents),
+          "none",
+        );
+        await p.evaluate(() => {
+          const root = document.documentElement;
+          const animate = root.animate.bind(root);
+          root.animate = (frames, options) => {
+            if (options?.pseudoElement === "::view-transition-new(root)") {
+              root.dataset.testThemeReveal = getComputedStyle(
+                document.querySelector("#app"),
+              ).viewTransitionName;
+            }
+            return animate(frames, options);
+          };
+        });
+        const theme = p.getByRole("switch", { name: "Dark mode" });
+        await theme.click();
+        await p.waitForFunction(() => document.body.classList.contains("dark"));
+        if (
+          await p.evaluate(
+            () => typeof document.startViewTransition === "function",
+          )
+        ) {
+          await p.waitForFunction(
+            () => document.documentElement.dataset.testThemeReveal === "none",
+          );
+        }
+        await p.waitForFunction(
+          () => !document.documentElement.classList.contains("theme-revealing"),
+        );
+        assert.deepEqual(await raw(p), { ...before, "mw-theme": '"dark"' });
+        await screenshot(p, "fluid-atmosphere-dark");
+        await p.emulateMedia({ reducedMotion: "reduce" });
+        await p.waitForFunction(
+          () => document.body.dataset.motion === "reduced",
+        );
+        assert.equal(
+          await p
+            .locator(".atmosphere-violet")
+            .evaluate((node) => getComputedStyle(node).animationName),
+          "none",
+        );
+        await p.evaluate(
+          () => delete document.documentElement.dataset.testThemeReveal,
+        );
+        await theme.uncheck();
+        assert.equal(
+          await p.locator("html").getAttribute("data-test-theme-reveal"),
+          null,
+        );
+        assert.deepEqual(await raw(p), before);
+        await p.setViewportSize({ width: 768, height: 900 });
+        await nav(p, "cards");
+        const list = p.locator(".wallet-activity-rows").first();
+        assert.equal(await list.getByRole("button").count(), 3);
+        assert.equal(
+          await list.evaluate((node) => {
+            const last = node.lastElementChild.getBoundingClientRect();
+            const link = node.nextElementSibling.getBoundingClientRect();
+            return (
+              node.scrollHeight <= node.clientHeight + 1 &&
+              last.bottom <= link.top
+            );
+          }),
+          true,
+        );
+        await screenshot(p, "fluid-wallet-tablet");
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Themed date and month pickers, steppers, and search work at phone and desktop widths",
+      async () => {
+        const isolated = await setup({ ...fixture(), "mw-theme": "dark" }),
+          p = isolated.page,
+          before = await raw(p);
+        await p.setViewportSize({ width: 320, height: 700 });
+        await nav(p, "transactions");
+        const search = p.getByRole("searchbox", { name: "Search entries" });
+        await search.fill("Lunch");
+        await p.getByRole("button", { name: "Clear search entries" }).click();
+        assert.equal(await search.inputValue(), "");
+        assert.equal(
+          await search.evaluate(
+            (node) =>
+              document.activeElement === node &&
+              getComputedStyle(node).appearance === "none",
+          ),
+          true,
+        );
+        await p
+          .getByRole("button", { name: "Add transaction", exact: true })
+          .click();
+        await p.locator("#date").fill("2026-10-31");
+        assert.ok((await p.locator("#date").boundingBox()).width > 140);
+        const picker = p.locator(".date-picker-popover");
+        const trigger = p.getByRole("button", {
+          name: "Choose date",
+          exact: true,
+        });
+        await trigger.click();
+        await picker.getByRole("grid", { name: "October 2026" }).waitFor();
+        assert.equal(
+          await picker.evaluate((node) => {
+            const border = node.getBoundingClientRect();
+            const style = getComputedStyle(node);
+            return (
+              border.left >= 0 &&
+              border.right <= innerWidth &&
+              style.backgroundColor ===
+                getComputedStyle(document.querySelector(".react-modal"))
+                  .backgroundColor
+            );
+          }),
+          true,
+        );
+        await p.keyboard.press("ArrowRight");
+        await picker.getByRole("grid", { name: "November 2026" }).waitFor();
+        await screenshot(p, "appearance-date-picker-phone");
+        await p.keyboard.press("Enter");
+        await picker.waitFor({ state: "detached" });
+        assert.equal(await p.locator("#date").inputValue(), "2026-11-01");
+        await trigger.click();
+        await p.keyboard.press("Escape");
+        await picker.waitFor({ state: "detached" });
+        await p.locator(".react-modal").waitFor();
+        await close(p);
+        await p.setViewportSize({ width: 1280, height: 900 });
+        await nav(p, "installments");
+        await p
+          .locator(".plan-card")
+          .getByRole("button", { name: "Edit", exact: true })
+          .click();
+        await p
+          .getByRole("button", {
+            name: "Choose first payment month",
+            exact: true,
+          })
+          .click();
+        await picker
+          .getByRole("button", { name: "Next year", exact: true })
+          .click();
+        await screenshot(p, "appearance-month-picker-dark");
+        await picker
+          .getByRole("button", { name: "February 2027", exact: true })
+          .click();
+        assert.equal(await p.locator("#plan-start").inputValue(), "2027-02");
+        const paid = p.locator("#plan-paid");
+        await paid.fill("11");
+        await p.getByRole("button", { name: "Increase payments made" }).click();
+        assert.equal(await paid.inputValue(), "12");
+        assert.equal(
+          await p
+            .getByRole("button", { name: "Increase payments made" })
+            .isDisabled(),
+          true,
+        );
+        await p.getByRole("button", { name: "Decrease payments made" }).click();
+        assert.equal(await paid.inputValue(), "11");
+        await close(p);
+        assert.deepEqual(await raw(p), before);
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Installment glyph and cover framing match the preview and persist independently",
+      async () => {
+        const data = fixture();
+        data["mw-plans"].push({
+          ...data["mw-plans"][0],
+          id: "plan-other",
+          name: "Weekend cabin",
+          emoji: "🧳",
+        });
+        const isolated = await setup(data),
+          p = isolated.page,
+          before = await raw(p);
+        await nav(p, "installments");
+        const laptop = p
+          .locator(".plan-card")
+          .filter({ hasText: "Studio laptop" });
+        const other = p
+          .locator(".plan-card")
+          .filter({ hasText: "Weekend cabin" });
+        await other.locator("[data-plan-glyph=suitcase]").waitFor();
+        await laptop.getByRole("button", { name: "Edit", exact: true }).click();
+        await p.getByText("Choose a glyph", { exact: true }).click();
+        await p.getByRole("button", { name: "Laptop", exact: true }).click();
+        const file = p.locator("#plan-cover-file");
+        await file.setInputFiles({
+          name: "unsupported.svg",
+          mimeType: "image/svg+xml",
+          buffer: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>"),
+        });
+        await p
+          .getByText("Choose a JPEG, PNG, or WebP photo.", { exact: true })
+          .waitFor();
+        const photo = await p.evaluate(() => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1000;
+          canvas.height = 520;
+          const context = canvas.getContext("2d");
+          const gradient = context.createLinearGradient(0, 0, 1000, 520);
+          gradient.addColorStop(0, "#201545");
+          gradient.addColorStop(1, "#26a995");
+          context.fillStyle = gradient;
+          context.fillRect(0, 0, 1000, 520);
+          return canvas.toDataURL("image/png").split(",")[1];
+        });
+        await file.setInputFiles({
+          name: "cover.png",
+          mimeType: "image/png",
+          buffer: Buffer.from(photo, "base64"),
+        });
+        const preview = p.locator(".plan-art-preview img");
+        await preview.waitFor();
+        assert.equal(
+          await preview.evaluate(async (node) => {
+            await node.decode();
+            return node.naturalWidth;
+          }),
+          768,
+        );
+        await p.locator("#plan-cover-zoom").fill("2");
+        const viewport = p.locator(".plan-cover-viewport");
+        await viewport.scrollIntoViewIfNeeded();
+        const bounds = await viewport.boundingBox();
+        await p.mouse.move(
+          bounds.x + bounds.width * 0.4,
+          bounds.y + bounds.height * 0.4,
+        );
+        await p.mouse.down();
+        await p.mouse.move(
+          bounds.x + bounds.width * 0.6,
+          bounds.y + bounds.height * 0.57,
+          { steps: 5 },
+        );
+        await p.mouse.up();
+        await viewport.press("ArrowDown");
+        const framing = (node) => {
+          const style = getComputedStyle(node);
+          return {
+            position: style.objectPosition,
+            zoom: new DOMMatrixReadOnly(style.transform).m11,
+          };
+        };
+        const previewFrame = await preview.evaluate(framing);
+        assert.equal(previewFrame.zoom, 2);
+        assert.notEqual(previewFrame.position, "50% 50%");
+        assert.deepEqual(await raw(p), before);
+        await save(p);
+        const updated = (await stored(p, "mw-plans")).find(
+          (plan) => plan.id === "plan-test",
+        );
+        assert.equal(updated.glyph, "laptop");
+        assert.equal(updated.coverFrame.zoom, 2);
+        assert.ok(updated.coverFrame.x < 0.5 && updated.coverFrame.y < 0.5);
+        assert.match(updated.coverPhoto, /^data:image\/jpeg;base64,/);
+        assert.ok(updated.coverPhoto.length <= 140000);
+        assert.equal((await raw(p))["mw-tx"], before["mw-tx"]);
+        await p.reload();
+        await laptop.locator(".plan-cover-image").waitFor();
+        assert.equal(
+          await laptop.locator("[data-plan-glyph=laptop]").count(),
+          1,
+        );
+        assert.deepEqual(
+          await laptop.locator(".plan-cover-image").evaluate(framing),
+          previewFrame,
+        );
+        assert.equal(await other.locator(".plan-cover-image").count(), 0);
+        assert.equal(
+          await other.locator("[data-plan-glyph=suitcase]").count(),
+          1,
+        );
+        await screenshot(p, "appearance-plan-cover");
+        await laptop.getByRole("button", { name: "Edit", exact: true }).click();
+        await p
+          .getByRole("button", { name: "Remove photo", exact: true })
+          .click();
+        await save(p);
+        assert.equal(await laptop.locator(".plan-cover-image").count(), 0);
+        assert.equal(
+          await laptop.locator("[data-plan-glyph=laptop]").count(),
+          1,
+        );
+        assert.equal(
+          (await stored(p, "mw-plans")).find((plan) => plan.id === "plan-test")
+            .coverPhoto,
+          undefined,
+        );
+        assert.equal(
+          (await stored(p, "mw-plans")).find((plan) => plan.id === "plan-test")
+            .coverFrame,
+          undefined,
+        );
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Touch can tap the wallet card to open and close its back",
+      async () => {
+        const isolated = await setup(fixture(), {
+          viewport: { width: 390, height: 844 },
+          hasTouch: true,
+          isMobile: true,
+          reducedMotion: "reduce",
+        });
+        const p = isolated.page,
+          before = await raw(p);
+        await p.goto(`${base}#/cards`);
+        const stage = p.locator(
+          "[data-space-card=test-card] .wallet-card-stage",
+        );
+        await stage.tap();
+        await stage.getByRole("button", { name: "View activity" }).waitFor();
+        await stage.tap({ position: { x: 115, y: 75 } });
+        await p.waitForFunction(
+          () => document.querySelector(".react-card-face")?.inert === false,
+        );
+        assert.deepEqual(await raw(p), before);
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Website icons stay local after lookup and carry through Calendar and search",
+      async () => {
+        const isolated = await setup(fixture()),
+          p = isolated.page,
+          before = await raw(p);
+        const redIcon = await p.evaluate(() => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 48;
+          canvas.height = 32;
+          const context = canvas.getContext("2d");
+          context.fillStyle = "#ff0000";
+          context.fillRect(0, 0, 48, 32);
+          context.fillStyle = "#ffffff";
+          context.beginPath();
+          context.moveTo(18, 8);
+          context.lineTo(34, 16);
+          context.lineTo(18, 24);
+          context.fill();
+          return canvas.toDataURL().split(",")[1];
+        });
+        const requests = [];
+        await p.route("https://icon.horse/icon/*", async (route) => {
+          const url = route.request().url();
+          requests.push(url);
+          const headers = { "access-control-allow-origin": "*" };
+          if (url === "https://icon.horse/icon/youtube.com") {
+            await route.fulfill({
+              status: 200,
+              contentType: "image/png",
+              headers,
+              body: Buffer.from(redIcon, "base64"),
+            });
+          } else {
+            await route.fulfill({ status: 404, headers, body: "Missing" });
+          }
+        });
+        await nav(p, "installments");
+        await p
+          .locator(".plan-card")
+          .getByRole("button", { name: "Edit", exact: true })
+          .click();
+        await p
+          .locator("#plan-site")
+          .fill("https://youtube.com/watch?v=keep-local");
+        await p
+          .locator(".plan-art-preview [data-icon-host='youtube.com']")
+          .waitFor();
+        await save(p);
+        const plans = await stored(p, "mw-plans");
+        assert.equal(plans[0].siteIcon.host, "youtube.com");
+        assert.match(plans[0].siteIcon.image, /^data:image\/png;base64,/);
+
+        await nav(p, "subscriptions");
+        await p
+          .getByRole("button", { name: "Add subscription", exact: true })
+          .click();
+        await p.locator("#subscription-name").fill("Video membership");
+        await p.locator("#subscription-amount").fill("129");
+        await p.locator("#subscription-site").fill("youtube.com");
+        await p
+          .locator(".site-icon-swatch [data-icon-host='youtube.com']")
+          .waitFor();
+        await save(p);
+        await p
+          .locator(".subscription-monogram [data-icon-host='youtube.com']")
+          .waitFor();
+        await nav(p, "calendar");
+        const date = p.locator('.planner-day[data-date="2026-10-21"]');
+        await date.locator("[data-icon-host='youtube.com']").waitFor();
+        await date.click();
+        const drawer = p.locator(".calendar-drawer");
+        await drawer
+          .locator(".planner-plans [data-icon-host='youtube.com']")
+          .waitFor();
+        await drawer
+          .getByRole("button", { name: "Renewals · 1", exact: true })
+          .click();
+        await drawer
+          .locator(".planner-event-icon [data-icon-host='youtube.com']")
+          .waitFor();
+        await close(p);
+        await nav(p, "overview");
+        await p
+          .locator(".forecast-event [data-icon-host='youtube.com']")
+          .waitFor();
+        await p.reload();
+        await p
+          .locator(".forecast-event [data-icon-host='youtube.com']")
+          .waitFor();
+        await p.keyboard.press("Control+k");
+        await p.locator("#space-command-query").fill("youtube.com");
+        assert.equal(
+          await p
+            .locator(".space-command-result [data-icon-host='youtube.com']")
+            .count(),
+          2,
+        );
+        await close(p);
+        assert.deepEqual(requests, [
+          "https://icon.horse/icon/youtube.com",
+          "https://icon.horse/icon/youtube.com",
+        ]);
+        await nav(p, "subscriptions");
+        await p
+          .getByRole("button", { name: "Edit Video membership", exact: true })
+          .click();
+        await p.locator("#subscription-site").fill("missing.example.org");
+        await p
+          .getByText("Icon unavailable. Your fallback stays visible.", {
+            exact: true,
+          })
+          .waitFor();
+        await save(p);
+        assert.equal(
+          await p.locator(".subscription-monogram").innerText(),
+          "VI",
+        );
+        assert.deepEqual((await stored(p, "mw-subscriptions"))[0].siteIcon, {
+          host: "missing.example.org",
+        });
+        assert.equal((await raw(p))["mw-tx"], before["mw-tx"]);
+        await isolated.context.close();
+      },
+    );
+    await run(
+      "Spending pace uses matched days and drills through without writing data at 320 px",
+      async () => {
+        const data = fixture();
+        data["mw-theme"] = "dark";
+        data["mw-tx"].push({
+          ...data["mw-tx"][0],
+          id: "prior-meal",
+          date: "2026-09-01",
+          expense: 40.25,
+          categories: { Food: 40.25 },
+        });
+        const { page: p, context: isolated } = await setup(data, {
+          viewport: { width: 320, height: 780 },
+          reducedMotion: "reduce",
+        });
+        try {
+          const before = await raw(p);
+          await p
+            .getByRole("button", { name: "Spending pace", exact: true })
+            .click();
+          const slider = p.getByRole("slider", {
+            name: "Explore spending pace by day",
+          });
+          assert.equal(await slider.inputValue(), "21");
+          assert.match(
+            await slider.getAttribute("aria-valuetext"),
+            /Oct 21: ฿2,310\.00; Sep 21: ฿40\.25/,
+          );
+          await slider.press("Home");
+          assert.equal(
+            await p.locator(".pace-difference").innerText(),
+            "฿59.75 higher",
+          );
+          const chart = p.locator(".pace-canvas");
+          const bounds = await chart.boundingBox();
+          await chart.click({
+            position: { x: bounds.width - 4, y: bounds.height / 2 },
+          });
+          await p.mouse.move(8, 140);
+          assert.equal(await slider.inputValue(), "24");
+          await slider.press("Home");
+          await p
+            .getByRole("button", { name: "View day", exact: true })
+            .click();
+          assert.match(
+            await p.getByRole("dialog").innerText(),
+            /Everyday meal 1/,
+          );
+          await close(p);
+          await p
+            .getByRole("button", { name: "Previous month", exact: true })
+            .click();
+          assert.match(
+            await p.locator(".pace-readout").innerText(),
+            /August 2026\s+No entries/,
+          );
+          assert.equal(await p.locator(".pace-line.previous").count(), 0);
+          assert.equal(
+            await p.evaluate(() => document.documentElement.scrollWidth),
+            320,
+          );
+          assert.deepEqual(await raw(p), before);
+        } finally {
+          await isolated.close();
+        }
+      },
+    );
+    await run(
+      "Command palette keeps keyboard focus, opens quick actions, and jumps to a wallet card from a cold route",
+      async () => {
+        const data = fixture();
+        data["mw-cards"].push({
+          ...data["mw-cards"][0],
+          id: "lunch-cash",
+          name: "Lunch cash card",
+          kind: "cash",
+          last4: "9026",
+        });
+        const { page: p, context: isolated } = await setup(data, {
+          viewport: { width: 390, height: 720 },
+        });
+        try {
+          const before = await raw(p);
+          const trigger = p.getByRole("button", {
+            name: "Search your finances",
+            exact: true,
+          });
+          await trigger.click();
+          const query = p.getByRole("combobox", {
+            name: "Search all your finances",
+          });
+          await p.waitForFunction(
+            () => document.activeElement?.id === "space-command-query",
+          );
+          await query.press("ArrowDown");
+          assert.equal(
+            await p
+              .getByRole("option", { name: "Add expense" })
+              .getAttribute("aria-selected"),
+            "true",
+          );
+          await query.press("ArrowDown");
+          assert.equal(
+            await p
+              .getByRole("option", { name: "Add income" })
+              .getAttribute("aria-selected"),
+            "true",
+          );
+          assert.equal(
+            await query.evaluate((node) => node === document.activeElement),
+            true,
+          );
+          await query.press("Enter");
+          await p
+            .getByRole("heading", { name: "Add income", exact: true })
+            .waitFor();
+          await close(p);
+          await p.waitForFunction(
+            () =>
+              document.activeElement?.getAttribute("aria-label") ===
+              "Search your finances",
+          );
+          await p.keyboard.press("Control+k");
+          await query.fill("not a record 12345");
+          assert.match(
+            await p.locator(".command-empty").innerText(),
+            /No matches/,
+          );
+          await p.getByRole("button", { name: "Clear search query" }).click();
+          assert.equal(await query.inputValue(), "");
+          await query.fill("lunch 9026");
+          await p.getByRole("option", { name: /Lunch cash card/ }).waitFor();
+          await query.press("Enter");
+          await p.locator("[data-page=cards]").waitFor();
+          await p.locator(".modal-backdrop").waitFor({ state: "detached" });
+          await p.waitForFunction(() => {
+            const target = document.getElementById("wallet-lunch-cash");
+            const bounds = target?.getBoundingClientRect();
+            return (
+              bounds &&
+              scrollY > 100 &&
+              bounds.top > 100 &&
+              bounds.bottom <= innerHeight
+            );
+          });
+          assert.deepEqual(await raw(p), before);
+        } finally {
+          await isolated.close();
+        }
+      },
+    );
     assert.deepEqual(errors, [], "Browser runtime errors");
     assert.deepEqual(external, [], "All assets must be bundled locally");
     console.log(
-      `\n${checks} production React checks passed. All five pages, old/new data, backups and GitHub Pages subpath verified.`,
+      `\n${checks} production React checks passed. All seven pages, old/new data, backups and GitHub Pages subpath verified.`,
     );
   } finally {
     if (browser) await browser.close();

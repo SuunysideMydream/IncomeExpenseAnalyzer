@@ -1,4 +1,11 @@
-import { lazy, Suspense, useRef, useState, type ChangeEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import {
   LayoutGroup,
   MotionConfig,
@@ -7,69 +14,66 @@ import {
   useSpring,
 } from "motion/react";
 import {
-  ArrowDownUp,
   ArrowUpRight,
   Bell,
   CalendarDays,
-  CreditCard,
   Download,
   Home,
-  LayoutDashboard,
   Search,
   Settings,
   SlidersHorizontal,
-  Tags,
-  Timer,
   Upload,
   Wallet,
 } from "lucide-react";
 import { EMPTY_FILTERS, useApp } from "./context";
 import { Finance } from "./lib/finance";
+import { ROUTES, ROUTE_ICONS } from "./lib/routes";
 import { parseBackup } from "./lib/model";
 import { saveBackup } from "./lib/files";
 import { Dialogs } from "./components/Dialogs";
+import { Atmosphere } from "./components/Atmosphere";
+import { ThemeSwitch } from "./components/ThemeSwitch";
 import { DropdownMenu } from "./components/ui/menus";
 const WelcomePage = lazy(() => import("./components/WelcomePage"));
 
-const pages = {
-  overview: lazy(() => import("./pages/Overview")),
-  transactions: lazy(() => import("./pages/Transactions")),
-  cards: lazy(() => import("./pages/Cards")),
-  installments: lazy(() => import("./pages/Installments")),
-  categories: lazy(() => import("./pages/Categories")),
+const loaders = {
+  overview: () => import("./pages/Overview"),
+  transactions: () => import("./pages/Transactions"),
+  calendar: () => import("./pages/Calendar"),
+  cards: () => import("./pages/Cards"),
+  subscriptions: () => import("./pages/Subscriptions"),
+  installments: () => import("./pages/Installments"),
+  categories: () => import("./pages/Categories"),
 };
-const navigation = [
-  {
-    view: "overview",
-    label: "Overview",
-    Icon: LayoutDashboard,
-    title: "Income, spending and commitments for the month.",
-  },
-  {
-    view: "transactions",
-    label: "Transactions",
-    Icon: ArrowDownUp,
-    title: "Every day, with every detail in reach.",
-  },
-  {
-    view: "cards",
-    label: "Cards",
-    Icon: CreditCard,
-    title: "Your wallet, purchases and payment reminders.",
-  },
-  {
-    view: "installments",
-    label: "Installments",
-    Icon: Timer,
-    title: "Monthly costs, interest and your payment progress.",
-  },
-  {
-    view: "categories",
-    label: "Categories",
-    Icon: Tags,
-    title: "Organize your ledger in your own colors.",
-  },
-] as const;
+const pages = {
+  overview: lazy(loaders.overview),
+  transactions: lazy(loaders.transactions),
+  calendar: lazy(loaders.calendar),
+  cards: lazy(loaders.cards),
+  subscriptions: lazy(loaders.subscriptions),
+  installments: lazy(loaders.installments),
+  categories: lazy(loaders.categories),
+};
+function Brand({ onClick }: { onClick: () => void }) {
+  return (
+    <a
+      className="space-brand"
+      href="#/overview"
+      aria-label="Moneywise home"
+      onClick={(event) => {
+        event.preventDefault();
+        onClick();
+      }}
+    >
+      <span className="space-brand-mark">
+        <Wallet size={21} />
+      </span>
+      <strong>
+        moneywise<span className="brand-dot">.</span>
+      </strong>
+    </a>
+  );
+}
 
 export default function App() {
   const {
@@ -83,6 +87,7 @@ export default function App() {
     close,
     setMonth,
     setCardMonth,
+    openCalendar,
     setFilters,
     setTxMode,
     notify,
@@ -90,9 +95,39 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null),
     [saving, setSaving] = useState(false),
     [intro, setIntro] = useState(false);
-  const current = navigation.find((item) => item.view === view)!,
+  const current = ROUTES.find((item) => item.view === view)!,
     Page = pages[view],
     name = state.workspace.profile?.name || "My workspace";
+  const order = ROUTES.indexOf(current),
+    previousOrder = useRef(order);
+  const direction = order >= previousOrder.current ? 1 : -1;
+  const navigationScroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    previousOrder.current = order;
+    const scroller = navigationScroller.current;
+    const active =
+      scroller?.querySelector<HTMLButtonElement>(".nav-item.active");
+    if (scroller && active && scroller.scrollWidth > scroller.clientWidth) {
+      const outer = scroller.getBoundingClientRect(),
+        inner = active.getBoundingClientRect();
+      if (inner.right > outer.right || inner.left < outer.left)
+        scroller.scrollTo({
+          left: scroller.scrollLeft + inner.left - outer.left - 12,
+          behavior: calm ? "instant" : "smooth",
+        });
+    }
+  }, [order, calm]);
+  useEffect(() => {
+    // Warm the two most common drill-throughs after the shell is interactive.
+    const warm = () => {
+      void loaders.transactions().catch(() => {});
+      void loaders.calendar().catch(() => {});
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(warm, { timeout: 1800 });
+      return () => cancelIdleCallback(id);
+    }
+  }, []);
   const initials =
     name === "My workspace"
       ? "MW"
@@ -181,152 +216,151 @@ export default function App() {
       reducedMotion={calm ? "always" : "never"}
       transition={{ type: "spring", bounce: 0, duration: 0.34 }}
     >
-      <a className="skip-link" href="#app">
+      <a
+        className="skip-link"
+        href="#app"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("app")?.focus();
+        }}
+      >
         Skip to finance workspace
       </a>
-      <header className="space-header sidebar">
-        <motion.div
-          className="studio-reading-progress"
-          aria-hidden="true"
-          style={{ scaleX: calm ? scrollYProgress : readingProgress }}
-        />
-        <div className="space-head-row">
-          <a
-            className="space-brand"
-            href="./"
-            aria-label="Moneywise home"
-            onClick={(event) => {
-              event.preventDefault();
-              navigate("overview");
-            }}
-          >
-            <span className="space-brand-mark">
-              <Wallet />
-            </span>
-            <strong>moneywise</strong>
-            <small>PERSONAL</small>
-          </a>
-          <button
-            className="space-search icon-button"
-            onClick={() => open({ kind: "search" })}
-            aria-label="Search your finances"
-          >
-            <Search />
-            <span>Search your money space</span>
-            <kbd>Ctrl K</kbd>
-          </button>
-          <div className="space-head-tools">
-            <div className="space-backup-actions">
-              <button
-                className="backup-button secondary"
-                id="load-backup-button"
-                onClick={() => fileInput.current?.click()}
-              >
-                Load data
-              </button>
-              <button
-                className="backup-button primary"
-                id="save-backup-button"
-                disabled={saving}
-                onClick={() => void save()}
-              >
-                {saving ? "Saving…" : "Save data"}
-              </button>
-              <button
-                className="backup-button secondary"
-                id="clear-data-button"
-                onClick={() => open({ kind: "clear" })}
-              >
-                Clear data
-              </button>
+      <div className="moneywise-workbench">
+        <Atmosphere calm={calm} />
+        <header className="space-header sidebar">
+          <motion.div
+            className="studio-reading-progress"
+            aria-hidden="true"
+            style={{ scaleX: calm ? scrollYProgress : readingProgress }}
+          />
+          <div className="space-head-row">
+            <div className="workbench-mobile-brand">
+              <Brand onClick={() => navigate("overview")} />
             </div>
-            <input
-              ref={fileInput}
-              id="backup-file"
-              type="file"
-              accept=".js,application/javascript,text/javascript"
-              hidden
-              onChange={(event) => void load(event)}
-            />
             <button
-              className="space-shell-icon"
-              aria-label="View payment reminders"
-              onClick={() => open({ kind: "reminders" })}
+              className="space-search icon-button"
+              onClick={() => open({ kind: "search" })}
+              aria-label="Search your finances"
+              aria-keyshortcuts="Control+K Meta+K"
             >
-              <Bell />
-              {model.upcoming().length > 0 && (
-                <span className="space-reminder-dot" />
-              )}
+              <Search />
+              <span>Search or jump to…</span>
+              <kbd>Ctrl K</kbd>
             </button>
-            <label className="mode-switch" title="Toggle light and dark mode">
-              <input
-                id="theme-toggle"
-                type="checkbox"
-                role="switch"
-                aria-label="Dark mode"
-                checked={state.theme === "dark"}
-                onChange={(event) => {
-                  try {
-                    store.commit({
-                      theme: event.target.checked ? "dark" : "light",
-                    });
-                  } catch (error) {
-                    notify((error as Error).message);
-                  }
-                }}
-              />
-              <span className="mode-track" aria-hidden="true">
-                <span className="mode-thumb">
-                  <svg className="mode-sun" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" />
-                  </svg>
-                  <svg className="mode-moon" viewBox="0 0 24 24">
-                    <path d="M19.5 15.5A8 8 0 0 1 8.5 4.5a8.5 8.5 0 1 0 11 11Z" />
-                  </svg>
-                </span>
-              </span>
-            </label>
-            <DropdownMenu
-              label="Workspace menu"
-              trigger={
+            <div className="space-head-tools">
+              <div className="space-backup-actions">
                 <button
-                  className="space-profile-trigger avatar"
-                  aria-label="Workspace menu"
+                  className="backup-button secondary"
+                  id="load-backup-button"
+                  onClick={() => fileInput.current?.click()}
                 >
-                  {initials}
+                  Load data
                 </button>
-              }
-              items={menu}
-            />
+                <button
+                  className="backup-button primary"
+                  id="save-backup-button"
+                  disabled={saving}
+                  onClick={() => void save()}
+                >
+                  {saving ? "Saving…" : "Save data"}
+                </button>
+                <button
+                  className="backup-button secondary"
+                  id="clear-data-button"
+                  onClick={() => open({ kind: "clear" })}
+                >
+                  Clear data
+                </button>
+              </div>
+              <input
+                ref={fileInput}
+                id="backup-file"
+                type="file"
+                accept=".js,application/javascript,text/javascript"
+                hidden
+                onChange={(event) => void load(event)}
+              />
+              <button
+                className="space-shell-icon"
+                aria-label="View payment reminders"
+                onClick={() => open({ kind: "reminders" })}
+              >
+                <Bell />
+                {(model.upcoming().length > 0 ||
+                  model.renewals.upcoming(Finance.localDate(), 14).length >
+                    0) && <span className="space-reminder-dot" />}
+              </button>
+              <ThemeSwitch />
+              <DropdownMenu
+                label="Workspace menu"
+                trigger={
+                  <button
+                    className="space-profile-trigger avatar"
+                    aria-label="Workspace menu"
+                  >
+                    {initials}
+                  </button>
+                }
+                items={menu}
+              />
+            </div>
           </div>
-        </div>
-        <div className="space-nav-band">
-          <div className="space-nav-row">
+        </header>
+        <aside
+          className="space-nav-band workbench-nav"
+          aria-label="Workspace navigation"
+        >
+          <div className="workbench-brand">
+            <Brand onClick={() => navigate("overview")} />
+            <span>PERSONAL FINANCE</span>
+          </div>
+          <div className="space-nav-row" ref={navigationScroller}>
             <LayoutGroup id="main-navigation">
               <nav aria-label="Main navigation">
-                {navigation.map(({ view: target, label, Icon }) => (
-                  <button
-                    key={target}
-                    className={`nav-item react-nav-item ${view === target ? "active" : ""}`}
-                    aria-current={view === target ? "page" : undefined}
-                    data-view={target}
-                    onClick={() => navigate(target)}
-                  >
-                    {view === target && (
-                      <motion.span
-                        className="react-nav-selection"
-                        layoutId="nav-selection"
-                        transition={
-                          calm
-                            ? { duration: 0 }
-                            : { type: "spring", bounce: 0, duration: 0.32 }
-                        }
-                      />
+                {["Workspace", "Manage"].map((group) => (
+                  <div className="workbench-nav-group" key={group}>
+                    <span className="workbench-nav-label">{group}</span>
+                    {ROUTES.filter((item) => item.group === group).map(
+                      ({ view: target, label }) => {
+                        const Icon = ROUTE_ICONS[target];
+                        return (
+                          <button
+                            key={target}
+                            className={`nav-item react-nav-item ${view === target ? "active" : ""}`}
+                            aria-current={view === target ? "page" : undefined}
+                            data-view={target}
+                            onPointerEnter={() => {
+                              void loaders[target]().catch(() => {});
+                            }}
+                            onFocus={() => {
+                              void loaders[target]().catch(() => {});
+                            }}
+                            onClick={() => navigate(target)}
+                          >
+                            {view === target && (
+                              <motion.span
+                                className="react-nav-selection"
+                                aria-hidden="true"
+                                layoutId={calm ? undefined : "nav-selection"}
+                                transition={
+                                  calm
+                                    ? { duration: 0 }
+                                    : {
+                                        type: "spring",
+                                        bounce: 0,
+                                        duration: 0.32,
+                                      }
+                                }
+                              />
+                            )}
+                            <Icon />
+                            <span>{label}</span>
+                          </button>
+                        );
+                      },
                     )}
-                    <Icon />
-                    <span>{label}</span>
-                  </button>
+                  </div>
                 ))}
               </nav>
             </LayoutGroup>
@@ -350,84 +384,88 @@ export default function App() {
               </button>
             </div>
           </div>
-        </div>
-      </header>
-      <main className="main">
-        <div className="space-page-heading">
-          <div>
-            <div className="space-breadcrumb">
-              <Home />
-              <span>{name}</span>
-              <span>/</span>
-              <span>{current.label}</span>
-            </div>
-            <h1 id="page-title">
-              {current.label}
-              <span className="studio-title-dot">.</span>
-            </h1>
-            <p className="studio-page-description">{current.title}</p>
-          </div>
-          <div className="space-today">
-            <CalendarDays />
-            <span>
-              {new Date().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </span>
-          </div>
-        </div>
-        <section id="app" tabIndex={-1} aria-label="Finance workspace">
-          <Suspense
-            fallback={
-              <div className="card" role="status">
-                Opening {current.label.toLowerCase()}…
+        </aside>
+        <div className="workbench-main">
+          <main className="main">
+            {view !== "overview" && (
+              <div className="space-page-heading">
+                <div>
+                  <div className="space-breadcrumb">
+                    <Home />
+                    <span>{name}</span>
+                    <span>/</span>
+                    <span>{current.label}</span>
+                  </div>
+                  <h1 id="page-title">
+                    {current.label}
+                    <span className="studio-title-dot">.</span>
+                  </h1>
+                  <p className="studio-page-description">{current.title}</p>
+                </div>
+                <button
+                  className="space-today"
+                  aria-label="Open calendar for today"
+                  onClick={() => openCalendar()}
+                >
+                  <CalendarDays />
+                  <span>
+                    {new Date().toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </button>
               </div>
-            }
-          >
-            {calm ? (
-              <div key={view} data-page={view}>
-                <Page />
-              </div>
-            ) : (
-              <motion.div
-                key={view}
-                data-page={view}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={
-                  calm
-                    ? { duration: 0.06 }
-                    : { type: "spring", bounce: 0, duration: 0.36 }
+            )}
+            <section id="app" tabIndex={-1} aria-label="Finance workspace">
+              <Suspense
+                fallback={
+                  <div className="route-loading" role="status">
+                    Opening {current.label.toLowerCase()}…
+                  </div>
                 }
               >
-                <Page />
-              </motion.div>
-            )}
-          </Suspense>
-        </section>
-        <footer className="space-footer">
-          <div className="source-note">
-            {state.workspace.mode === "fresh"
-              ? "Your personal ledger · data stays in this browser"
-              : `Workbook history + your entries · ${model.transactions.length} recorded days & transactions`}
-            <br />
-            Save data regularly to keep a portable backup.
-          </div>
-          <div>
-            <button onClick={() => open({ kind: "preferences" })}>
-              Workspace preferences
-            </button>
-            <span aria-hidden="true"> · </span>
-            <button onClick={() => open({ kind: "settings" })}>
-              Data & settings
-            </button>
-            <span aria-hidden="true"> · </span>
-            <button onClick={() => setIntro(true)}>Replay welcome</button>
-          </div>
-        </footer>
-      </main>
+                <motion.div
+                  key={view}
+                  data-page={view}
+                  initial={
+                    calm ? false : { opacity: 0.6, x: direction * 12, y: 4 }
+                  }
+                  animate={{ opacity: 1, x: 0, y: 0 }}
+                  transition={
+                    calm
+                      ? { duration: 0 }
+                      : { type: "spring", bounce: 0, duration: 0.32 }
+                  }
+                >
+                  <Page />
+                </motion.div>
+              </Suspense>
+            </section>
+            <footer className="space-footer">
+              <div className="source-note">
+                {state.workspace.mode === "fresh"
+                  ? "Your personal ledger · data stays in this browser"
+                  : `Workbook history + your entries · ${model.transactions.length} recorded days & transactions`}
+                <br />
+                Save data regularly to keep a portable backup.
+              </div>
+              <div>
+                <button onClick={() => open({ kind: "preferences" })}>
+                  Workspace preferences
+                </button>
+                <span aria-hidden="true"> · </span>
+                <button onClick={() => open({ kind: "settings" })}>
+                  Data & settings
+                </button>
+                <span aria-hidden="true"> · </span>
+                <button onClick={() => setIntro(true)}>Replay welcome</button>
+              </div>
+            </footer>
+          </main>
+        </div>
+      </div>
       <Dialogs />
       <Suspense fallback={null}>
         {intro && <WelcomePage onClose={() => setIntro(false)} />}

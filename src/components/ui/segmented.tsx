@@ -54,6 +54,7 @@ export function Segmented<T extends string>({
             {value === option.value && (
               <motion.span
                 className="react-segment-marker"
+                aria-hidden="true"
                 layoutId="selection"
                 transition={
                   calm

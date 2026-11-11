@@ -1,4 +1,6 @@
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { normalizeColor } from "../lib/finance";
+import type { CSSVars } from "../types";
 const presets = [
   "#2C9B72",
   "#7460DC",
@@ -43,18 +45,11 @@ export function ColorPicker({
       <h4>{label}</h4>
       <div className="card-color-editor">
         <div className="card-color-top">
-          <label
+          <span
             className="card-color-swatch"
             style={{ background: valid }}
-            aria-label={`${label} native color`}
-          >
-            <input
-              type="color"
-              value={valid}
-              aria-label={`${label} color`}
-              onChange={(event) => onChange(event.target.value.toUpperCase())}
-            />
-          </label>
+            aria-hidden="true"
+          />
           <div className="card-hex-field">
             <label htmlFor={id}>{label} HEX</label>
             <input
@@ -65,7 +60,9 @@ export function ColorPicker({
                 if (normalized) onChange(normalized);
               }}
               placeholder="#7460DC"
+              maxLength={7}
               spellCheck={false}
+              autoComplete="off"
               aria-invalid={!normalized}
             />
           </div>
@@ -84,7 +81,11 @@ export function ColorPicker({
           ))}
         </div>
         <details className="card-color-adjust">
-          <summary>Adjust RGB channels</summary>
+          <summary>
+            <SlidersHorizontal size={14} />
+            <span>Adjust RGB channels</span>
+            <ChevronDown size={14} />
+          </summary>
           {["Red", "Green", "Blue"].map((channel, index) => (
             <label className="card-color-channel" key={channel}>
               <span>{channel}</span>
@@ -93,6 +94,11 @@ export function ColorPicker({
                 min="0"
                 max="255"
                 value={rgb[index]}
+                style={
+                  {
+                    "--channel-track": `linear-gradient(90deg, rgb(${rgb.map((value, i) => (i === index ? 0 : value)).join(" ")}), rgb(${rgb.map((value, i) => (i === index ? 255 : value)).join(" ")}))`,
+                  } as CSSVars
+                }
                 aria-label={`${label} ${channel}`}
                 onChange={(event) =>
                   updateChannel(index, Number(event.target.value))

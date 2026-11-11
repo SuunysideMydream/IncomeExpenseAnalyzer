@@ -17,7 +17,12 @@ function Test-MoneywisePreview {
         throw "Port $Port is serving a different page. That server has not been changed."
     }
     try { $viteResponse = Invoke-WebRequest -UseBasicParsing -Uri "$previewProbe@vite/client" -TimeoutSec 2 }
-    catch { throw "Port $Port is not serving the Vite development runtime. Stop the old static preview and run this launcher again." }
+    catch {
+        # The HTML can answer before Vite finishes transforming its first module.
+        # A timeout or a temporary Vite/server error is not proof of a static server.
+        if (-not $_.Exception.Response -or [int]$_.Exception.Response.StatusCode -ge 500) { return $false }
+        throw "Port $Port is not serving the Vite development runtime. Stop the old static preview and run this launcher again."
+    }
     if ($viteResponse.StatusCode -ne 200 -or $viteResponse.Headers['Content-Type'] -notmatch 'javascript') {
         throw "Port $Port is serving the source without Vite. Stop the old static preview and run this launcher again."
     }
@@ -41,9 +46,8 @@ try {
     catch [System.Threading.AbandonedMutexException] { $previewLocked = $true }
     if (-not $previewLocked) { throw 'Another Moneywise preview is still starting. Try again shortly.' }
 
-    $previewReady = Test-MoneywisePreview
-    if (-not $previewReady) {
-        if (Test-PreviewPort) { throw "Port $Port is occupied but not responding as Moneywise. That server has not been changed." }
+    $previewProcess = $null
+    if (-not (Test-PreviewPort)) {
         $vitePath = Join-Path $PSScriptRoot 'node_modules\vite\bin\vite.js'
         if (-not (Test-Path -LiteralPath $vitePath)) { throw 'Project dependencies are not installed. Run pnpm install in this repository, then run this launcher again.' }
         $bundledNode = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
@@ -61,14 +65,18 @@ try {
         $previewStart.UseShellExecute = $true
         $previewStart.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
         $previewProcess = [System.Diagnostics.Process]::Start($previewStart)
-        for ($attempt = 0; $attempt -lt 40; $attempt++) {
-            Start-Sleep -Milliseconds 250
+    }
+    $previewClock = [System.Diagnostics.Stopwatch]::StartNew()
+    $previewReady = $false
+    do {
+        if ($previewProcess) {
             $previewProcess.Refresh()
             if ($previewProcess.HasExited) { throw "Preview server exited (code $($previewProcess.ExitCode)). Check Node.js, installed dependencies, and whether port $Port is available." }
-            if (Test-MoneywisePreview) { $previewReady = $true; break }
         }
-        if (-not $previewReady) { throw "Preview did not become ready at $previewUrl" }
-    }
+        if ((Test-PreviewPort) -and (Test-MoneywisePreview)) { $previewReady = $true; break }
+        Start-Sleep -Milliseconds 250
+    } while ($previewClock.Elapsed.TotalSeconds -lt 35)
+    if (-not $previewReady) { throw "Preview did not become ready at $previewUrl within 35 seconds. Any existing server on port $Port was left alone." }
     if (-not $Quiet) {
         Write-Host "Moneywise is ready: $previewUrl"
         Write-Host 'Refresh your browser tab. The Codex startup hook can run this launcher automatically after you trust it.'

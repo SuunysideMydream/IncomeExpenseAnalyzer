@@ -12,7 +12,7 @@ The supplied files in `Assets/shadcnspace asset/` remain unchanged as source ref
 | Animated changing text | Preserved reusable rotating-copy component; current operating Overview prioritizes figures over decorative copy | `shadcnspace/TextEffects.tsx` |
 | Moving icon | Preserved reusable circular quick-add component; the current workspace provides direct entry buttons | `shadcnspace/TextEffects.tsx` |
 | Liquid splash | SVG liquid wave and wordmark only while data is opening; Welcome / Replay welcome now opens the optional photographic introduction | `TextEffects.tsx`, `src/main.tsx`, `WelcomePage.tsx` |
-| Place card | Landscape monthly budget, remaining amount, progress and edit action | `pages/Overview.tsx`, local landscape SVG |
+| Place card | Monthly budget with remaining amount, progress gauge, and edit action in the balance panel | `pages/Overview.tsx`, `src/workbench.css` |
 | Event card | Upcoming real card due dates with date badges and links | `pages/Overview.tsx` |
 | Credit-card new design | Chip/NFC, recorded-spend visibility, spring 3D flip, inert hidden face, activity and quick entry; credit/cash patterns and editable gradients | `shadcnspace/WalletCard.tsx` |
 | Product / price card | Installment purchases, calculated monthly cost, progress, persistent pinning and edit/details/payment actions | `pages/Installments.tsx`, `ui/card.tsx`, `ui/button.tsx` |

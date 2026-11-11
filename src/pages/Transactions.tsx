@@ -8,6 +8,7 @@ import type { DailyTotal, Filters } from "../types";
 import { MonthPicker } from "../components/common";
 import { Select } from "../components/ui/select";
 import { Segmented } from "../components/ui/segmented";
+import { SearchField } from "../components/ui/search-field";
 import { ContextMenu } from "../components/ui/menus";
 import { PaginationPills } from "../components/shadcnspace/PaginationPills";
 export default function Transactions() {
@@ -115,16 +116,16 @@ export default function Transactions() {
                 setPage(0);
               }}
             >
-              <label className="ledger-search">
-                Search entries
-                <input
+              <div className="ledger-search">
+                <label htmlFor="ledger-search">Search entries</label>
+                <SearchField
                   id="ledger-search"
-                  type="search"
+                  label="Search entries"
                   placeholder="Note, category, card or date"
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={setQuery}
                 />
-              </label>
+              </div>
               <label>
                 Type
                 <Select

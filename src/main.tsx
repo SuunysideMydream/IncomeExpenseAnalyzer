@@ -8,6 +8,8 @@ import workbookUrl from "../data.json?url";
 import "../space.css";
 import "./styles.css";
 import "./studio.css";
+import "./workbench.css";
+import "./controls.css";
 
 // Read-only initialization: migration never rewrites a user's saved ledger.
 try {

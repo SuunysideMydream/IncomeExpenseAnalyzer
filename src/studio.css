@@ -2601,6 +2601,8 @@ body[data-motion="reduced"] .space-place-card:hover .space-place-image {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .card-wallet.wallet-with-insights {
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.3fr);
@@ -2717,10 +2719,6 @@ body[data-motion="reduced"] .space-place-card:hover .space-place-image {
   .wallet-activity-rows b {
     font-size: 11px;
   }
-  .wallet-activity-rows {
-    max-height: 140px;
-    overflow: auto;
-  }
 }
 @media (max-width: 620px) {
   .card-wallet.wallet-with-insights {
@@ -2737,9 +2735,6 @@ body[data-motion="reduced"] .space-place-card:hover .space-place-image {
   }
   .wallet-activity-heading > strong {
     font-size: 25px;
-  }
-  .wallet-activity-rows {
-    max-height: none;
   }
   .wallet-activity-rows strong,
   .wallet-activity-rows b {

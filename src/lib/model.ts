@@ -3,6 +3,7 @@ import type {
   CategoryMeta,
   LedgerState,
   Plan,
+  Subscription,
   StorageAdapter,
   Transaction,
   Workbook,
@@ -17,11 +18,27 @@ import {
   RATES,
   TERMS,
 } from "./finance";
+import {
+  createRenewalIndex,
+  isRenewalLink,
+  renewalKey,
+  validateSubscription,
+  validateSubscriptions,
+} from "./recurring";
+import {
+  isCardNetwork,
+  isCoverFrame,
+  isPlanCover,
+  isPlanEmoji,
+  isPlanGlyph,
+} from "./appearance";
+import { isSiteIcon } from "./site-icon";
 
 export const KEYS = {
   transactions: "mw-tx",
   localCards: "mw-cards",
   localPlans: "mw-plans",
+  subscriptions: "mw-subscriptions",
   categoryMeta: "mw-category-meta",
   planOverrides: "mw-plan-overrides",
   cardOverrides: "mw-card-overrides",
@@ -35,6 +52,7 @@ export const DEFAULTS: LedgerState = {
   transactions: [],
   localCards: [],
   localPlans: [],
+  subscriptions: [],
   categoryMeta: {},
   planOverrides: {},
   cardOverrides: {},
@@ -59,9 +77,11 @@ export function readState(storage: StorageAdapter): LedgerState {
   for (const [property, key] of Object.entries(KEYS)) {
     try {
       const raw = storage.getItem(key);
-      if (raw !== null)
-        (result as unknown as Record<string, unknown>)[property] =
-          JSON.parse(raw);
+      if (raw !== null) {
+        const parsed: unknown = JSON.parse(raw);
+        if (property === "subscriptions") validateSubscriptions(parsed);
+        (result as unknown as Record<string, unknown>)[property] = parsed;
+      }
     } catch {
       /* Do not overwrite unreadable storage; the next write remains explicit. */
     }
@@ -106,6 +126,9 @@ export function selectLedger(state: LedgerState, workbook: Workbook) {
       [
         ...data.categories.map((name) => resolveCategory(name, state.aliases)),
         ...Object.keys(state.categoryMeta),
+        ...state.subscriptions.map((item) =>
+          item.category ? resolveCategory(item.category, state.aliases) : "",
+        ),
         ...transactions.flatMap((row) => [
           row.category,
           ...Object.keys(row.categories || {}),
@@ -172,6 +195,13 @@ export function selectLedger(state: LedgerState, workbook: Workbook) {
     transactions,
     data.months.map((row) => row.month),
   );
+  const subscriptions = state.subscriptions.map((item) => ({
+    ...item,
+    category: item.category
+      ? resolveCategory(item.category, state.aliases)
+      : "",
+  }));
+  const renewals = createRenewalIndex(subscriptions, transactions);
   const upcoming = (today = Finance.localDate()) =>
     cards
       .filter((card) => card.status !== "Completed")
@@ -188,6 +218,8 @@ export function selectLedger(state: LedgerState, workbook: Workbook) {
     transactions,
     cards,
     plans,
+    subscriptions,
+    renewals,
     categories,
     meta,
     months,
@@ -202,6 +234,7 @@ function assertRecord(
     throw Error(message);
 }
 export function validateState(state: LedgerState) {
+  validateSubscriptions(state.subscriptions);
   for (const key of ["transactions", "localCards", "localPlans"] as const)
     if (!Array.isArray(state[key]))
       throw Error(`Invalid backup: ${KEYS[key]}.`);
@@ -245,6 +278,8 @@ export function validateState(state: LedgerState) {
       !["credit", "cash"].includes(item.kind as string)
     )
       throw Error("Invalid card type in backup.");
+    if (item.network !== undefined && !isCardNetwork(item.network))
+      throw Error("Invalid card network in backup.");
     if (
       item.dueDay != null &&
       (!Number.isInteger(item.dueDay) ||
@@ -292,6 +327,16 @@ export function validateState(state: LedgerState) {
       if (item[field] !== undefined && typeof item[field] !== "string")
         throw Error("Invalid installment schedule in backup.");
     }
+    if (item.emoji !== undefined && !isPlanEmoji(item.emoji))
+      throw Error("Invalid installment icon in backup.");
+    if (item.glyph !== undefined && !isPlanGlyph(item.glyph))
+      throw Error("Invalid installment glyph in backup.");
+    if (item.coverPhoto !== undefined && !isPlanCover(item.coverPhoto))
+      throw Error("Invalid installment cover photo in backup.");
+    if (item.coverFrame !== undefined && !isCoverFrame(item.coverFrame))
+      throw Error("Invalid installment cover framing in backup.");
+    if (item.siteIcon !== undefined && !isSiteIcon(item.siteIcon))
+      throw Error("Invalid installment website icon in backup.");
   };
   for (const [items, validate] of [
     [state.localCards, validateCard],
@@ -346,8 +391,17 @@ export function validateState(state: LedgerState) {
   )
     throw Error("Invalid pinned plans.");
   const ids = new Set<string>();
+  const renewalIds = new Set<string>();
   state.transactions.forEach((row, index) => {
     Finance.validateTransaction(row);
+    if (row.renewal !== undefined) {
+      if (!isRenewalLink(row.renewal) || row.income !== 0 || row.expense <= 0)
+        throw Error("Invalid linked renewal expense in backup.");
+      const key = renewalKey(row.renewal);
+      if (renewalIds.has(key))
+        throw Error("Duplicate linked renewal in backup.");
+      renewalIds.add(key);
+    }
     const id = row.id || `legacy-${index}`;
     if (
       typeof id !== "string" ||
@@ -361,6 +415,10 @@ export function validateState(state: LedgerState) {
     assertRecord(row, "Invalid workbook transaction edit.");
     if (!/^import-\d{4}-\d{2}-\d{2}-\d+$/.test(id))
       throw Error("Invalid workbook transaction edit.");
+    if (row.renewal !== undefined)
+      throw Error(
+        "Workbook aggregates cannot be linked to individual renewals.",
+      );
     if (row.deleted !== true)
       Finance.validateTransaction(row as unknown as Transaction);
   }
@@ -476,8 +534,9 @@ export function createLedgerStore(storage: StorageAdapter, workbook: Workbook) {
     editId?: string,
     duplicate = false,
   ) {
+    const ledger = editId || input.renewal ? model() : undefined;
     const previous = editId
-      ? model().transactions.find((row) => row.id === editId)
+      ? ledger?.transactions.find((row) => row.id === editId)
       : undefined;
     if (editId && !previous) throw Error("This entry no longer exists.");
     const row = {
@@ -494,6 +553,25 @@ export function createLedgerStore(storage: StorageAdapter, workbook: Workbook) {
       ),
     };
     Finance.validateTransaction(row);
+    const link = duplicate ? undefined : previous?.renewal || input.renewal;
+    if (link) {
+      if (
+        !isRenewalLink(link) ||
+        row.income !== 0 ||
+        row.expense <= 0 ||
+        previous?.source === "workbook"
+      )
+        throw Error("A renewal must be linked to a single local expense.");
+      if (
+        !previous?.renewal &&
+        ledger?.renewals.get(link.subscriptionId, link.scheduledFor)?.status !==
+          "scheduled"
+      )
+        throw Error(
+          "This renewal was already handled or is no longer scheduled.",
+        );
+      row.renewal = link;
+    } else delete row.renewal;
     const local = state.transactions.map((entry, index) => ({
       ...entry,
       id: entry.id || `legacy-${index}`,
@@ -511,6 +589,60 @@ export function createLedgerStore(storage: StorageAdapter, workbook: Workbook) {
       commit({ transactions: local, undo: null });
     }
     return row;
+  }
+  function saveSubscription(input: Omit<Subscription, "id">, editId?: string) {
+    const previous = state.subscriptions.find((item) => item.id === editId);
+    if (editId && !previous) throw Error("This subscription no longer exists.");
+    const subscription: Subscription = {
+      ...input,
+      id: editId || `sub-${crypto.randomUUID()}`,
+      name: input.name.trim(),
+      amount: Finance.money(input.amount),
+      note: input.note?.trim(),
+      skippedDates: previous?.skippedDates || [],
+    };
+    validateSubscription(subscription);
+    commit({
+      subscriptions: [
+        ...state.subscriptions.filter((item) => item.id !== subscription.id),
+        subscription,
+      ],
+    });
+    return subscription;
+  }
+  function linkRenewal(
+    subscriptionId: string,
+    date: string,
+    transactionId: string,
+  ) {
+    const row = model().transactions.find((item) => item.id === transactionId);
+    if (
+      !row ||
+      row.source !== "local" ||
+      row.renewal ||
+      row.income ||
+      row.expense <= 0
+    )
+      throw Error("Choose an unlinked expense you recorded in Moneywise.");
+    return saveTransaction(
+      { ...row, renewal: { subscriptionId, scheduledFor: date } },
+      row.id,
+    );
+  }
+  function setRenewalSkipped(id: string, date: string, skip: boolean) {
+    const renewal = model().renewals.get(id, date);
+    if (!renewal || renewal.status !== (skip ? "scheduled" : "skipped"))
+      throw Error("This renewal changed. Open it again to review.");
+    const subscription = state.subscriptions.find((item) => item.id === id)!;
+    const skippedDates = (subscription.skippedDates || []).filter(
+      (item) => item !== date,
+    );
+    if (skip) skippedDates.push(date);
+    commit({
+      subscriptions: state.subscriptions.map((item) =>
+        item.id === id ? { ...item, skippedDates } : item,
+      ),
+    });
   }
   function deleteTransaction(id: string) {
     const row = model().transactions.find((row) => row.id === id);
@@ -545,8 +677,10 @@ export function createLedgerStore(storage: StorageAdapter, workbook: Workbook) {
       throw Error("Enter a card name and exactly four digits.");
     if (!card.color || !card.color2)
       throw Error("Enter a valid HEX color, for example #2C9B72.");
+    if (card.network !== undefined && !isCardNetwork(card.network))
+      throw Error("Choose a supported card network.");
     if (
-      card.dueDay &&
+      card.dueDay != null &&
       (!Number.isInteger(card.dueDay) || card.dueDay < 1 || card.dueDay > 31)
     )
       throw Error("Payment due day must be from 1 to 31.");
@@ -574,10 +708,20 @@ export function createLedgerStore(storage: StorageAdapter, workbook: Workbook) {
       throw Error("Enter a purchase name and a positive amount.");
     if (!TERMS.includes(input.months) || !RATES.includes(input.rate))
       throw Error("Choose a supported term and interest rate.");
+    if (input.emoji !== undefined && !isPlanEmoji(input.emoji))
+      throw Error("Choose an icon from the emoji sets.");
+    if (input.glyph !== undefined && !isPlanGlyph(input.glyph))
+      throw Error("Choose an installment glyph.");
+    if (input.coverPhoto !== undefined && !isPlanCover(input.coverPhoto))
+      throw Error("Choose a supported cover photo.");
+    if (input.coverFrame !== undefined && !isCoverFrame(input.coverFrame))
+      throw Error("Choose valid cover framing.");
+    if (input.siteIcon !== undefined && !isSiteIcon(input.siteIcon))
+      throw Error("Choose a valid website icon.");
     const paid = Number(input.paidMonths) || 0;
     if (!Number.isInteger(paid) || paid < 0 || paid > input.months)
       throw Error("Payments made must be between 0 and the term.");
-    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(input.startMonth || ""))
+    if (!Finance.validDate(`${input.startMonth || ""}-01`))
       throw Error("Choose the first payment month.");
     if (input.card && !model().cards.some((card) => card.id === input.card))
       throw Error("Choose an existing card.");
@@ -642,6 +786,9 @@ export function createLedgerStore(storage: StorageAdapter, workbook: Workbook) {
     commit,
     model,
     saveTransaction,
+    saveSubscription,
+    linkRenewal,
+    setRenewalSkipped,
     deleteTransaction,
     saveCard,
     savePlan,

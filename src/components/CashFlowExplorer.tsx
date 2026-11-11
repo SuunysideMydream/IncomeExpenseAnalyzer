@@ -12,23 +12,75 @@ import { baht2, monthText, signedMoney } from "../lib/finance";
 import { flowPoints, smoothPath } from "../lib/charts";
 import { Segmented } from "./ui/segmented";
 import { SectionHeading } from "./common";
+import { SpendingPace } from "./SpendingPace";
+
+type Period = "monthly" | "daily";
+type ChartStyle = "bars" | "area";
 
 export function CashFlowExplorer() {
-  const { model, month, openMonth, open, calm } = useApp();
-  const [mode, setMode] = useState<"monthly" | "daily">("monthly");
-  const [style, setStyle] = useState<"bars" | "area">("bars");
-  const [selected, setSelected] = useState<number | null>(null);
-  const [hover, setHover] = useState<number | null>(null);
+  const { month } = useApp();
+  const [mode, setMode] = useState<Period | "pace">("monthly");
+  const [style, setStyle] = useState<ChartStyle>("bars");
   const [small, setSmall] = useState(
     () => matchMedia("(max-width:620px)").matches,
   );
-  const id = useId().replace(/:/g, "");
   useEffect(() => {
     const media = matchMedia("(max-width:620px)"),
       listener = () => setSmall(media.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);
   }, []);
+  return (
+    <>
+      <SectionHeading
+        title="Cash flow"
+        description={
+          mode === "pace"
+            ? "Compare recorded spending at the same point in each month."
+            : "Income and spending from your recorded entries."
+        }
+        action={
+          <Segmented
+            label="Cash flow period"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "monthly", label: "Monthly" },
+              { value: "daily", label: "Daily" },
+              { value: "pace", label: "Spending pace" },
+            ]}
+          />
+        }
+      />
+      {mode === "pace" ? (
+        <SpendingPace key={month} small={small} />
+      ) : (
+        <CashFlowSeries
+          mode={mode}
+          style={style}
+          setStyle={setStyle}
+          small={small}
+        />
+      )}
+    </>
+  );
+}
+
+function CashFlowSeries({
+  mode,
+  style,
+  setStyle,
+  small,
+}: {
+  mode: Period;
+  style: ChartStyle;
+  setStyle: (style: ChartStyle) => void;
+  small: boolean;
+}) {
+  const { model, month, openMonth, open, calm } = useApp();
+  const [selected, setSelected] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const id = useId().replace(/:/g, "");
   useEffect(() => {
     setSelected(null);
     setHover(null);
@@ -76,21 +128,6 @@ export function CashFlowExplorer() {
   }
   return (
     <>
-      <SectionHeading
-        title="Cash flow"
-        description="Income and spending from your recorded entries."
-        action={
-          <Segmented
-            label="Cash flow period"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: "monthly", label: "Monthly" },
-              { value: "daily", label: "Daily" },
-            ]}
-          />
-        }
-      />
       <div className="flow-topline">
         <div className="flow-period">
           <span className="studio-eyebrow">EXPLORING</span>

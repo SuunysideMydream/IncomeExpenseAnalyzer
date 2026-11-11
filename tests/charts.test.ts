@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { allocations, flowPoints, mosaic } from "../src/lib/charts";
+import {
+  allocations,
+  flowPoints,
+  mosaic,
+  spendingPace,
+} from "../src/lib/charts";
 import { contrastInk } from "../src/lib/finance";
 import type { Transaction } from "../src/types";
 const rows: Transaction[] = [
@@ -69,6 +74,42 @@ describe("visualizations preserve financial meaning", () => {
     const points = flowPoints(rows, "2026-10", "monthly", ["2026-09"]);
     expect(points.map((row) => row.month)).toEqual(["2026-09", "2026-10"]);
     expect(points.at(-1)).toMatchObject({ income: 30400, expense: 230 });
+  });
+  it("compares the same elapsed day and defaults to today with later records available", () => {
+    const pace = spendingPace(
+      [
+        ...rows,
+        { ...rows[2], id: "earlier", date: "2026-09-01", expense: 42.75 },
+        { ...rows[2], id: "later", date: "2026-10-10", expense: 5.15 },
+      ],
+      "2026-10",
+      "2026-10-02",
+    );
+    expect(pace.initialIndex).toBe(1);
+    expect(pace.days[pace.initialIndex]).toEqual({
+      date: "2026-10-02",
+      total: 230,
+      previous: { date: "2026-09-02", total: 42.75 },
+    });
+    expect(pace.days.at(-1)).toMatchObject({
+      date: "2026-10-10",
+      total: 235.15,
+    });
+  });
+  it("clamps comparison dates in shorter months and distinguishes missing history", () => {
+    const pace = spendingPace(
+      [{ ...rows[2], date: "2024-02-29", expense: 80.5 }],
+      "2024-03",
+      "2026-10-02",
+    );
+    expect(pace.days.at(-1)).toEqual({
+      date: "2024-03-31",
+      total: 0,
+      previous: { date: "2024-02-29", total: 80.5 },
+    });
+    expect(
+      spendingPace(rows, "2026-10", "2026-10-02").days[0].previous,
+    ).toBeNull();
   });
   it("preserves exact category allocations and identifies the unallocated residual", () => {
     const result = allocations(rows.slice(0, 3));
